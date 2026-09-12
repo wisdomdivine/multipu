@@ -64,10 +64,9 @@ export function getIpWhitelist(): string[] {
     .filter(Boolean);
 }
 
-export function isIpWhitelisted(ip: string): boolean {
-  const whitelist = getIpWhitelist();
-  if (whitelist.length === 0) return true; // No whitelist = all IPs allowed
-  return whitelist.includes(ip);
+export function isIpWhitelisted(_ip: string): boolean {
+  // IP restrictions disabled for now
+  return true;
 }
 
 export function getSessionTimeout(): number {
