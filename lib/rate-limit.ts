@@ -78,11 +78,6 @@ export const authLimiter = createRateLimiter({
   max: 10,          // 10 auth attempts per minute
 });
 
-export const adminAuthLimiter = createRateLimiter({
-  windowMs: 60_000, // 1 minute
-  max: 5,           // stricter for admin login endpoint
-});
-
 export const apiLimiter = createRateLimiter({
   windowMs: 60_000, // 1 minute
   max: 60,          // 60 API calls per minute

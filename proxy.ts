@@ -5,8 +5,7 @@ import type { NextRequest } from "next/server";
  * Next.js Edge Proxy & Route Guard — runs BEFORE every request.
  *
  * Responsibilities:
- * 1. Admin area access guard (enforces admin session cookie for /admin)
- * 2. Request tracing & security headers (x-request-id)
+ * Request tracing & security headers (x-request-id)
  *
  * Note: User authentication is managed seamlessly via Web3 wallet sessions
  * and verified per API route without disruptive route bounces.

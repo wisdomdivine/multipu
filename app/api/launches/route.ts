@@ -6,7 +6,7 @@ import { assertTrustedOrigin } from "@/lib/request-security";
 import { getEvmLaunchPolicyError, getLaunchPolicyError } from "@/lib/runtime-config.server";
 import { verifyLaunchConfirmationOnChain } from "@/lib/solana/server";
 import { getEnvironmentScope } from "@/lib/env-scope.server";
-import { getLaunchControls } from "@/lib/admin";
+import { getLaunchControls } from "@/lib/launch-controls";
 import { isEvmLaunchpad, isSolanaLaunchpad, getLaunchpadChainNetwork } from "@/lib/launchpad-network";
 import { verifyEvmLaunchTransaction } from "@/lib/evm/server";
 

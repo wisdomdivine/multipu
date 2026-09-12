@@ -31,8 +31,7 @@ Multipu is an open-source multi-chain token launch orchestrator, algorithmic tra
 ```
 multipu/
 ├── app/                  # Next.js App Router routes & API endpoints
-│   ├── admin/            # Admin controls, launchpad settings & treasury dashboard
-│   ├── api/              # Secure REST APIs (auth, launches, trades, treasury, signals)
+│   ├── api/              # Secure REST APIs (auth, launches, trades, signals)
 │   ├── dashboard/        # Main trading terminal, explorer, token manager & API keys
 │   └── launch/           # Unified multi-chain token launch wizard
 ├── components/           # UI components, modals, canvas hero & design system

@@ -19,17 +19,6 @@ const DEFAULT_LAUNCH_CONTROLS = {
 
 export type LaunchControls = typeof DEFAULT_LAUNCH_CONTROLS;
 
-export function getAdminWallets() {
-  return (process.env.ADMIN_WALLETS ?? "")
-    .split(",")
-    .map((wallet) => wallet.trim())
-    .filter(Boolean);
-}
-
-export function isAdminWallet(walletAddress: string) {
-  return getAdminWallets().includes(walletAddress);
-}
-
 function asBoolean(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
 }
@@ -69,6 +58,10 @@ function normalizeLaunchControls(value: unknown): LaunchControls {
   };
 }
 
+/**
+ * Reads the latest launch controls from Supabase admin_settings.
+ * Used by launch creation route to enforce platform pause, whitelist, and adapter toggles.
+ */
 export async function getLaunchControls(): Promise<LaunchControls> {
   const supabase = createAdminSupabase();
   const { data } = await supabase
