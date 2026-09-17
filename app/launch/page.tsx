@@ -148,7 +148,7 @@ export default function LaunchPage() {
 
   const togglePad = (padId: string) => {
     if (isEvmPad(padId) && !evmLaunchesEnabled) {
-      toast.error("Robinhood and BSC multi-chain launches are currently in testnet configuration.");
+      toast.error("Multi-chain EVM launches are currently locked.");
       return;
     }
 

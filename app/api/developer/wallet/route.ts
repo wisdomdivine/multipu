@@ -2,6 +2,7 @@ import { getAuth, getClientIp } from "@/lib/auth";
 import { apiLimiter } from "@/lib/rate-limit";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { Connection, PublicKey, Keypair } from "@solana/web3.js";
+import { SOLANA_RPC_URL } from "@/lib/solana";
 import { Wallet } from "ethers";
 import bs58 from "bs58";
 
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
     let balance = 0;
     if (network === "solana") {
       try {
-        const connection = new Connection("https://api.devnet.solana.com", "confirmed");
+        const connection = new Connection(SOLANA_RPC_URL, "confirmed");
         const balanceLamports = await connection.getBalance(new PublicKey(devWallet.public_key));
         balance = balanceLamports / 1e9;
       } catch (balErr) {

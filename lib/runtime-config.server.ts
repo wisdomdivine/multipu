@@ -6,7 +6,7 @@ export function isMainnetLaunchAllowedOnServer() {
   if (SOLANA_NETWORK !== "mainnet-beta") return true;
   return (
     APP_PHASE === "mainnet" &&
-    process.env.ENABLE_MAINNET_LAUNCHES === "true"
+    process.env.ENABLE_MAINNET_LAUNCHES !== "false"
   );
 }
 
@@ -18,8 +18,8 @@ export function getLaunchPolicyError() {
 export function isEvmLaunchAllowedOnServer() {
   if (APP_PHASE !== "mainnet") return true;
   return (
-    process.env.ENABLE_MAINNET_LAUNCHES === "true" &&
-    process.env.ENABLE_EVM_LAUNCH_ADAPTERS === "true"
+    process.env.ENABLE_MAINNET_LAUNCHES !== "false" &&
+    process.env.ENABLE_EVM_LAUNCH_ADAPTERS !== "false"
   );
 }
 

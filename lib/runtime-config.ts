@@ -1,13 +1,13 @@
 export const SOLANA_NETWORK = (process.env.NEXT_PUBLIC_SOLANA_NETWORK ??
-  "devnet") as "devnet" | "testnet" | "mainnet-beta";
+  "mainnet-beta") as "devnet" | "testnet" | "mainnet-beta";
 
 export const APP_PHASE = (process.env.NEXT_PUBLIC_APP_PHASE ??
-  "testnet") as "testnet" | "mainnet";
+  "mainnet") as "testnet" | "mainnet";
 
 export const MAINNET_LAUNCH_ENABLED_PUBLIC =
-  process.env.NEXT_PUBLIC_ENABLE_MAINNET_LAUNCHES === "true";
+  process.env.NEXT_PUBLIC_ENABLE_MAINNET_LAUNCHES !== "false";
 export const EVM_LAUNCH_ADAPTERS_ENABLED_PUBLIC =
-  process.env.NEXT_PUBLIC_ENABLE_EVM_LAUNCH_ADAPTERS === "true";
+  process.env.NEXT_PUBLIC_ENABLE_EVM_LAUNCH_ADAPTERS !== "false";
 
 export function isMainnetNetwork() {
   return SOLANA_NETWORK === "mainnet-beta";

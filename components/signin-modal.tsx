@@ -115,25 +115,17 @@ export function SignInModal({ isOpen, onClose, redirectTo }: SignInModalProps) {
 
   const authMethods = [
     {
-      id: "demo",
-      label: "Demo Wallet",
-      description: "Instant testing bypass",
-      onClick: handleDemoSignIn,
-      isPrimary: true,
-      icon: <IconWallet className="w-5 h-5 text-accent" />,
-    },
-    {
       id: "solana",
       label: "Solana Wallet",
-      description: "Fast multi-chain deployment",
+      description: "Connect Phantom, Solflare & Backpack",
       onClick: handleSolanaSignIn,
       isPrimary: true,
       icon: <IconWallet className="w-5 h-5 text-[#14F195]" />,
     },
     {
       id: "bsc",
-      label: "BSC Wallet",
-      description: "BNB Smart Chain networks",
+      label: "EVM / BSC Wallet",
+      description: "Connect MetaMask, Rabby & WalletConnect",
       onClick: handleBscSignIn,
       isPrimary: true,
       icon: <IconWallet className="w-5 h-5 text-[#F3BA2F]" />,
