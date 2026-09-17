@@ -26,9 +26,25 @@ interface Message {
   simulation?: StrategySimulationResult;
   status?: "active" | "paused" | "completed";
   telemetryLogs?: { time: string; text: string; type: "info" | "signal" | "buy" | "sell" }[];
+  olaxbtSignal?: {
+    symbol: string;
+    momentumScore: number;
+    trendDirection: "bullish" | "bearish" | "neutral";
+    recommendation: string;
+    volumeSurge24h: number;
+    strategyName: string;
+  };
 }
 
 const STARTER_PROMPTS = [
+  {
+    label: "🔥 Scan $PEPEQ Alpha",
+    prompt: "Analyze $PEPEQ on Solana with OlaXBT momentum score and bonding curve health.",
+  },
+  {
+    label: "⚡ Trending Tokens",
+    prompt: "Which meme tokens currently show the highest volume surges and safest liquidity?",
+  },
   {
     label: "Pump.fun Momentum",
     prompt: "Scalp fresh Pump.fun memes on Solana with >$5k volume and OlaXBT momentum >80. Max 0.2 SOL per trade. Take profit at +35%, stop loss at -12%.",
@@ -41,11 +57,8 @@ const STARTER_PROMPTS = [
     label: "Four.meme BSC Scalper",
     prompt: "Snipe trending BSC tokens on Four.meme with >$3k volume. Take profit at +50%, stop loss at -10%. 0.05 BNB per trade.",
   },
-  {
-    label: "OlaXBT Alpha Whale",
-    prompt: "Follow top smart-money wallet accumulations on Solana with OlaXBT score >85. 0.5 SOL size, TP at +60%, SL at -15%.",
-  },
 ];
+
 
 export function TradingAgentCopilot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -124,61 +137,139 @@ export function TradingAgentCopilot() {
     return () => clearInterval(interval);
   }, [isAgentRunning, activeStrategy]);
 
-  // Handle submit strategy
+  // Handle submit query or strategy
   const handleSubmit = async (customPrompt?: string) => {
     const text = (customPrompt || inputPrompt).trim();
     if (!text) return;
 
+    const userMessageId = "usr_" + Date.now();
+    const agentMessageId = "ast_" + Date.now();
+
     const userMessage: Message = {
-      id: Math.random().toString(),
+      id: userMessageId,
       sender: "user",
       text,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInputPrompt("");
     setIsLoading(true);
-    setLoadingStatus("Analyzing strategy requirements...");
+    setLoadingStatus("Connecting to Groq LPU & OlaXBT...");
 
     try {
-      // 1. Parse prompt
-      const parseRes = await fetch("/api/agents/parse-strategy", {
+      const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: text }),
+        body: JSON.stringify({
+          messages: newMessages
+            .filter((m) => m.text)
+            .map((m) => ({
+              role: m.sender === "user" ? "user" : "assistant",
+              content: m.text || "",
+            })),
+        }),
       });
 
-      const parseData = await parseRes.json();
-      if (!parseRes.ok) throw new Error(parseData.error || "Failed to compile strategy");
+      if (!res.ok) {
+        throw new Error(`AI service returned status ${res.status}`);
+      }
 
-      setLoadingStatus("Running deterministic simulation & backtest...");
+      // Read metadata headers
+      let olaxbtSignalData: any = undefined;
+      const rawSignal = res.headers.get("X-OlaXBT-Signal");
+      if (rawSignal) {
+        try {
+          olaxbtSignalData = JSON.parse(decodeURIComponent(rawSignal));
+        } catch {}
+      }
 
-      // 2. Simulate
-      const simRes = await fetch("/api/agents/simulate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rules: parseData.strategy.rules }),
-      });
+      let strategyPreviewData: any = undefined;
+      const rawStrategy = res.headers.get("X-Strategy-Preview");
+      if (rawStrategy) {
+        try {
+          strategyPreviewData = JSON.parse(decodeURIComponent(rawStrategy));
+        } catch {}
+      }
 
-      const simData = await simRes.json();
+      // Run simulation if strategy preview exists
+      let simResult: StrategySimulationResult | undefined = undefined;
+      if (strategyPreviewData?.rules) {
+        try {
+          const simRes = await fetch("/api/agents/simulate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rules: strategyPreviewData.rules }),
+          });
+          if (simRes.ok) {
+            const simData = await simRes.json();
+            simResult = simData.simulation;
+          }
+        } catch {}
+      }
 
-      const agentMessage: Message = {
-        id: Math.random().toString(),
-        sender: "agent",
-        strategy: parseData.strategy,
-        simulation: simData.simulation,
-      };
-
-      setMessages((prev) => [...prev, agentMessage]);
-      setActiveStrategy(parseData.strategy);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to process strategy");
+      // Append assistant placeholder message
       setMessages((prev) => [
         ...prev,
         {
-          id: Math.random().toString(),
+          id: agentMessageId,
           sender: "agent",
-          text: "Sorry, I could not parse that strategy. Please specify target tokens, volume triggers, and take profit or stop loss percentages.",
+          text: "",
+          strategy: strategyPreviewData,
+          simulation: simResult,
+          olaxbtSignal: olaxbtSignalData,
+        },
+      ]);
+
+      if (strategyPreviewData) {
+        setActiveStrategy(strategyPreviewData);
+      }
+
+      if (!res.body) {
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith("data: ")) {
+            const dataStr = trimmed.replace(/^data:\s*/, "");
+            if (dataStr === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(dataStr);
+              const delta = parsed.choices?.[0]?.delta?.content || "";
+              accumulated += delta;
+            } catch {
+              accumulated += dataStr;
+            }
+          } else if (trimmed && !trimmed.startsWith(":")) {
+            accumulated += trimmed;
+          }
+        }
+
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === agentMessageId ? { ...msg, text: accumulated } : msg
+          )
+        );
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to process query");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "err_" + Date.now(),
+          sender: "agent",
+          text: "I encountered an error connecting to the Multipu AI reasoning engine. Please try again.",
         },
       ]);
     } finally {
@@ -186,6 +277,7 @@ export function TradingAgentCopilot() {
       setLoadingStatus("");
     }
   };
+
 
   // Deploy agent
   const handleDeploy = async (strategy: ParsedStrategy, mode: "paper" | "live") => {
@@ -363,14 +455,54 @@ export function TradingAgentCopilot() {
                   {/* Agent Response Text */}
                   {msg.sender === "agent" && msg.text && (
                     <div className="flex justify-start">
-                      <div className="max-w-[90%] px-4 py-3 rounded-2xl bg-[#141414] border border-white/[0.04] text-xs text-neutral-300 font-sans leading-relaxed">
+                      <div className="max-w-[90%] px-4 py-3 rounded-2xl bg-[#141414] border border-white/[0.04] text-xs text-neutral-300 font-sans leading-relaxed whitespace-pre-wrap">
                         {msg.text}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rich OlaXBT Signal Intelligence Card */}
+                  {msg.olaxbtSignal && (
+                    <div className="rounded-2xl border border-white/[0.08] bg-[#101010] p-4 space-y-2.5 font-mono text-[11px]">
+                      <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                        <span className="font-bold text-white tracking-wide">
+                          ${msg.olaxbtSignal.symbol} Alpha
+                        </span>
+                        <span
+                          className={cn(
+                            "px-2.5 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider",
+                            msg.olaxbtSignal.recommendation === "Strong Buy"
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                              : msg.olaxbtSignal.recommendation === "Accumulate"
+                              ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
+                              : "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                          )}
+                        >
+                          {msg.olaxbtSignal.recommendation}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-400">
+                        <span>OlaXBT Momentum:</span>
+                        <span className="text-white font-semibold font-mono">
+                          {msg.olaxbtSignal.momentumScore}/100
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-400">
+                        <span>24h Volume Surge:</span>
+                        <span className="text-emerald-400 font-semibold font-mono">
+                          +{msg.olaxbtSignal.volumeSurge24h}%
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-neutral-400">
+                        <span>Strategy Pattern:</span>
+                        <span className="text-neutral-200">{msg.olaxbtSignal.strategyName}</span>
                       </div>
                     </div>
                   )}
 
                   {/* Structured Strategy & Simulation Card */}
                   {msg.strategy && (
+
                     <div className="rounded-2xl border border-white/[0.06] bg-[#141414] p-4 space-y-3 font-sans">
                       <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.04]">
                         <span className="text-xs font-semibold text-white font-sans">
