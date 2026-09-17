@@ -33,6 +33,7 @@ import {
   isMainnetLaunchAllowedOnClient,
 } from "@/lib/runtime-config";
 import { executeEvmLaunch } from "@/lib/evm/client";
+import { InsufficientBalanceModal } from "@/components/ui/insufficient-balance-modal";
 
 type Step = "connect" | "create" | "launchpads" | "confirm" | "success";
 
@@ -60,6 +61,19 @@ export default function LaunchPage() {
 
   // Result state
   const [mintAddress, setMintAddress] = useState<string | null>(null);
+  const [insufficientModal, setInsufficientModal] = useState<{
+    open: boolean;
+    required: string;
+    current: string;
+    symbol: string;
+    address: string | null;
+  }>({
+    open: false,
+    required: "0.015",
+    current: "0.00",
+    symbol: "SOL",
+    address: null,
+  });
   const [mintTx, setMintTx] = useState<string | null>(null);
   const [launchResults, setLaunchResults] = useState<
     { launchpad: string; poolAddress: string; status: "live" | "failed" }[]
@@ -224,6 +238,30 @@ export default function LaunchPage() {
 
       let mintedTokenAddress = mintAddress;
       const requiresSolanaMint = selectedPads.some((p) => !isEvmPad(p));
+
+      // Balance pre-flight check for Solana
+      if (requiresSolanaMint && !isDemo) {
+        if (!publicKey || !connection) {
+          throw new Error("Solana wallet required for deployment");
+        }
+        try {
+          const lamports = await connection.getBalance(publicKey);
+          const solBal = lamports / 1e9;
+          if (solBal < 0.005) {
+            setInsufficientModal({
+              open: true,
+              required: "0.015",
+              current: solBal.toFixed(4),
+              symbol: "SOL",
+              address: publicKey.toBase58(),
+            });
+            setIsDeploying(false);
+            return;
+          }
+        } catch (balErr) {
+          console.warn("[LAUNCH] Pre-flight balance check:", balErr);
+        }
+      }
 
       if (requiresSolanaMint && !mintedTokenAddress) {
         if (isDemo) {
@@ -414,8 +452,22 @@ export default function LaunchPage() {
     } catch (err) {
       console.error("[DEPLOY] Error:", err);
       const message = err instanceof Error ? err.message : "Deployment failed";
-      setError(message);
-      toast.error(message);
+      if (
+        message.toLowerCase().includes("insufficient") ||
+        message.toLowerCase().includes("debit an account") ||
+        message.toLowerCase().includes("funds for rent")
+      ) {
+        setInsufficientModal({
+          open: true,
+          required: "0.015",
+          current: "0.00",
+          symbol: selectedPads.some((p) => !isEvmPad(p)) ? "SOL" : "BNB",
+          address: publicKey ? publicKey.toBase58() : session.walletAddress,
+        });
+      } else {
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       setIsDeploying(false);
       setDeployProgress("");
@@ -1234,6 +1286,16 @@ export default function LaunchPage() {
           </motion.div>
         )}
       </div>
+
+      <InsufficientBalanceModal
+        isOpen={insufficientModal.open}
+        onClose={() => setInsufficientModal((prev) => ({ ...prev, open: false }))}
+        requiredAmount={insufficientModal.required}
+        currentBalance={insufficientModal.current}
+        symbol={insufficientModal.symbol}
+        walletAddress={insufficientModal.address}
+        actionName="token deployment"
+      />
     </div>
   );
 }
