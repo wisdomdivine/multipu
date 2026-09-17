@@ -38,11 +38,11 @@ interface Message {
 
 const STARTER_PROMPTS = [
   {
-    label: "🔥 Scan $PEPEQ Alpha",
+    label: "Scan $PEPEQ Alpha",
     prompt: "Analyze $PEPEQ on Solana with OlaXBT momentum score and bonding curve health.",
   },
   {
-    label: "⚡ Trending Tokens",
+    label: "Trending Tokens",
     prompt: "Which meme tokens currently show the highest volume surges and safest liquidity?",
   },
   {

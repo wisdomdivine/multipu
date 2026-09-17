@@ -89,6 +89,20 @@ export default function LaunchPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
+    const paramName = params.get("name");
+    const paramSymbol = params.get("symbol");
+    const paramSupply = params.get("supply");
+    const paramDesc = params.get("desc") || params.get("description");
+    if (paramName || paramSymbol) {
+      setTokenData((prev) => ({
+        ...prev,
+        name: paramName || prev.name,
+        symbol: paramSymbol || prev.symbol,
+        supply: paramSupply || prev.supply || "1000000000",
+        description: paramDesc || prev.description,
+      }));
+    }
+
     const resumeId = params.get("resume");
     if (!resumeId) return;
 
@@ -313,58 +327,71 @@ export default function LaunchPage() {
           let poolAddr = "";
 
           if (isEvmPad(padId)) {
-            if (!evmAddress) throw new Error("EVM wallet not connected");
-            const evmResult = await executeEvmLaunch({
-              launchpad: padId as "fourmeme" | "pons",
-              walletAddress: evmAddress,
-              token: {
-                name: tokenData.name,
-                symbol: tokenData.symbol,
-                description: tokenData.description,
-                imageUrl: imageUrl || null,
-                supply: tokenData.supply,
-                decimals: parseInt(tokenData.decimals),
-              },
-            });
-            launchSig = evmResult.txHash;
-            poolAddr = evmResult.poolAddress;
+            if (isDemo) {
+              setDeployProgress(`Simulating ${padMeta?.name || padId} sandbox deployment...`);
+              await new Promise((r) => setTimeout(r, 1200));
+              launchSig = "0x" + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+              poolAddr = "0x" + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+            } else {
+              if (!evmAddress) throw new Error("EVM wallet not connected");
+              const evmResult = await executeEvmLaunch({
+                launchpad: padId as "fourmeme" | "pons" | "sherwood",
+                walletAddress: evmAddress,
+                token: {
+                  name: tokenData.name,
+                  symbol: tokenData.symbol,
+                  description: tokenData.description,
+                  imageUrl: imageUrl || null,
+                  supply: tokenData.supply,
+                  decimals: parseInt(tokenData.decimals),
+                },
+              });
+              launchSig = evmResult.txHash;
+              poolAddr = evmResult.poolAddress;
+            }
           } else {
-            if (!connection || !publicKey || !signTransaction || !mintedTokenAddress) {
-              throw new Error("Missing Solana launch prerequisites");
-            }
-            const service = getLaunchpad(padId);
-            if (!service) {
-              throw new Error(`Unsupported launchpad: ${padId}`);
-            }
-            const launchResult = await service.createLaunchTransaction(
-              connection,
-              {
-                mintAddress: new PublicKey(mintedTokenAddress),
-                walletPublicKey: publicKey,
-                initialLiquiditySol: 1,
-                tokenAmount:
-                  (BigInt(tokenData.supply || "1000000000") *
-                    BigInt(10 ** (parseInt(tokenData.decimals) || 9))) /
-                  10n,
+            if (isDemo) {
+              setDeployProgress(`Simulating ${padMeta?.name || padId} sandbox pool creation...`);
+              await new Promise((r) => setTimeout(r, 1200));
+              launchSig = "sim_solana_" + Math.random().toString(36).substring(2, 14);
+              poolAddr = "sim_pool_" + Math.random().toString(36).substring(2, 14);
+            } else {
+              if (!connection || !publicKey || !signTransaction || !mintedTokenAddress) {
+                throw new Error("Missing Solana launch prerequisites");
               }
-            );
+              const service = getLaunchpad(padId);
+              if (!service) {
+                throw new Error(`Unsupported launchpad: ${padId}`);
+              }
+              const launchResult = await service.createLaunchTransaction(
+                connection,
+                {
+                  mintAddress: new PublicKey(mintedTokenAddress),
+                  walletPublicKey: publicKey,
+                  initialLiquiditySol: 1,
+                  tokenAmount:
+                    (BigInt(tokenData.supply || "1000000000") *
+                      BigInt(10 ** (parseInt(tokenData.decimals) || 9))) /
+                    10n,
+                }
+              );
 
-            setDeployProgress(`Sign ${padMeta?.name || padId} launch transaction...`);
-            const signedLaunch = await signTransaction(launchResult.transaction);
-            launchSig = await connection.sendRawTransaction(signedLaunch.serialize());
-            await connection.confirmTransaction(launchSig, "confirmed");
-            poolAddr = launchResult.poolAddress ? launchResult.poolAddress.toBase58() : launchSig.slice(0, 12);
+              setDeployProgress(`Sign ${padMeta?.name || padId} launch transaction...`);
+              const signedLaunch = await signTransaction(launchResult.transaction);
+              launchSig = await connection.sendRawTransaction(signedLaunch.serialize());
+              await connection.confirmTransaction(launchSig, "confirmed");
+              poolAddr = launchResult.poolAddress ? launchResult.poolAddress.toBase58() : launchSig.slice(0, 12);
+            }
           }
 
           if (launchId) {
             await fetch("/api/launches", {
-              method: "PUT",
+              method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                id: launchId,
-                status: "live",
+                launchId,
                 poolAddress: poolAddr,
-                txSignature: launchSig,
+                launchTx: launchSig,
               }),
             });
           }

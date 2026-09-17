@@ -32,10 +32,10 @@ interface ChatMessage {
 }
 
 const QUICK_PROMPTS = [
-  { label: "🔥 Analyze $PEPEQ", prompt: "Analyze $PEPEQ on Solana with OlaXBT momentum score" },
-  { label: "⚡ Trending Bonding Curves", prompt: "Which bonding curves have the highest momentum and lowest MEV risk?" },
-  { label: "🤖 Build 25% TP Sniper", prompt: "Build a momentum sniper bot on Solana Meteora with 25% take profit and 10% stop loss" },
-  { label: "🛡️ Explain KeeperHub Shield", prompt: "How does the KeeperHub MEV shield prevent sandwich attacks on bonding curve swaps?" },
+  { label: "Analyze $PEPEQ", prompt: "Analyze $PEPEQ on Solana with OlaXBT momentum score" },
+  { label: "Trending Bonding Curves", prompt: "Which bonding curves have the highest momentum and lowest MEV risk?" },
+  { label: "Build 25% TP Sniper", prompt: "Build a momentum sniper bot on Solana Meteora with 25% take profit and 10% stop loss" },
+  { label: "Explain KeeperHub Shield", prompt: "How does the KeeperHub MEV shield prevent sandwich attacks on bonding curve swaps?" },
 ];
 
 export function MultipuAiChat() {

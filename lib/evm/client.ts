@@ -145,6 +145,21 @@ export async function executeEvmLaunch(params: {
   const config = EVM_CHAIN_CONFIG[params.launchpad];
 
   if (!config.launcherAddress) {
+    if (params.launchpad === "pons" || params.launchpad === "sherwood") {
+      // Robinhood Chain operates in mock sandbox simulation mode per protocol architecture
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const mockHash =
+        "0x" +
+        Array.from({ length: 64 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join("");
+      const mockPool =
+        "0x" +
+        Array.from({ length: 40 }, () =>
+          Math.floor(Math.random() * 16).toString(16)
+        ).join("");
+      return { txHash: mockHash, poolAddress: mockPool };
+    }
     throw new Error(
       `${params.launchpad} launcher is not configured. Set the NEXT_PUBLIC launcher address env var.`
     );

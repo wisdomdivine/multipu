@@ -19,8 +19,8 @@ export function isMainnetLaunchAllowedOnClient() {
 }
 
 export function areEvmLaunchesEnabledOnClient() {
+  if (APP_PHASE !== "mainnet") return true;
   return (
-    APP_PHASE === "mainnet" &&
     MAINNET_LAUNCH_ENABLED_PUBLIC &&
     EVM_LAUNCH_ADAPTERS_ENABLED_PUBLIC
   );

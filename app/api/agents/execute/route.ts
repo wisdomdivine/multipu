@@ -5,8 +5,8 @@ import { executeKeeperHubWorkflow } from "@/lib/keeperhub/client";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { z } from "zod";
 
-const executeTradeSchema = z.object({
-  agentId: z.string(),
+const directTradeSchema = z.object({
+  agentId: z.string().optional(),
   tokenSymbol: z.string(),
   tokenMint: z.string().optional(),
   action: z.enum(["buy", "sell"]),
@@ -14,6 +14,21 @@ const executeTradeSchema = z.object({
   chain: z.enum(["solana", "bsc", "robinhood"]).default("solana"),
   amount: z.number().positive(),
   mode: z.enum(["paper", "live"]).default("paper"),
+});
+
+const deployStrategySchema = z.object({
+  rules: z.object({
+    chain: z.enum(["solana", "bsc", "robinhood"]).default("solana"),
+    launchpads: z.array(z.string()).default(["pumpfun"]),
+    takeProfitPct: z.number().optional().default(35),
+    stopLossPct: z.number().optional().default(15),
+    tradeAmount: z.number().positive().default(0.1),
+    minVolume24h: z.number().optional(),
+    minOlaXbtMomentum: z.number().optional(),
+  }),
+  mode: z.enum(["paper", "live"]).default("paper"),
+  tokenSymbol: z.string().optional(),
+  tokenMint: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -32,16 +47,52 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const parsed = executeTradeSchema.safeParse(body);
 
-    if (!parsed.success) {
-      return Response.json(
-        { error: "Validation failed", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+    // Check if strategy deployment or direct trade
+    const isStrategyDeploy = Boolean(body.rules);
+    let agentId: string;
+    let tokenSymbol: string;
+    let tokenMint: string | undefined;
+    let action: "buy" | "sell";
+    let launchpad: string;
+    let chain: "solana" | "bsc" | "robinhood";
+    let amount: number;
+    let mode: "paper" | "live";
+
+    if (isStrategyDeploy) {
+      const parsed = deployStrategySchema.safeParse(body);
+      if (!parsed.success) {
+        return Response.json(
+          { error: "Validation failed", details: parsed.error.flatten() },
+          { status: 400 }
+        );
+      }
+      const { rules, mode: parsedMode } = parsed.data;
+      mode = parsedMode;
+      chain = rules.chain;
+      launchpad = rules.launchpads[0] || (chain === "solana" ? "pumpfun" : chain === "bsc" ? "fourmeme" : "sherwood");
+      tokenSymbol = parsed.data.tokenSymbol || "PEPEQ";
+      tokenMint = parsed.data.tokenMint;
+      action = "buy";
+      amount = rules.tradeAmount;
+      agentId = `agent_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    } else {
+      const parsed = directTradeSchema.safeParse(body);
+      if (!parsed.success) {
+        return Response.json(
+          { error: "Validation failed", details: parsed.error.flatten() },
+          { status: 400 }
+        );
+      }
+      agentId = parsed.data.agentId || `agent_${Date.now()}`;
+      tokenSymbol = parsed.data.tokenSymbol;
+      tokenMint = parsed.data.tokenMint;
+      action = parsed.data.action;
+      launchpad = parsed.data.launchpad;
+      chain = parsed.data.chain;
+      amount = parsed.data.amount;
+      mode = parsed.data.mode;
     }
-
-    const { agentId, tokenSymbol, tokenMint, action, launchpad, chain, amount, mode } = parsed.data;
 
     let txHash = "";
     let executionLatency = 350;
@@ -93,6 +144,13 @@ export async function POST(request: Request) {
 
     return Response.json({
       success: true,
+      session: {
+        id: agentId,
+        status: "active",
+        mode,
+        chain,
+        launchpad,
+      },
       trade: {
         agentId,
         tokenSymbol,

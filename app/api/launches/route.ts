@@ -214,7 +214,13 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const parsed = confirmLaunchSchema.safeParse(body);
+    const normalizedBody = {
+      launchId: body.launchId || body.id,
+      poolAddress: body.poolAddress,
+      launchTx: body.launchTx || body.txSignature,
+      initialLiquidity: body.initialLiquidity,
+    };
+    const parsed = confirmLaunchSchema.safeParse(normalizedBody);
     const walletKind = String(auth.walletKind ?? "solana");
 
     if (!parsed.success) {
@@ -301,3 +307,5 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Failed to confirm launch" }, { status: 500 });
   }
 }
+
+export const PUT = PATCH;

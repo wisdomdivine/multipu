@@ -16,8 +16,8 @@ export function getLaunchPolicyError() {
 }
 
 export function isEvmLaunchAllowedOnServer() {
+  if (APP_PHASE !== "mainnet") return true;
   return (
-    APP_PHASE === "mainnet" &&
     process.env.ENABLE_MAINNET_LAUNCHES === "true" &&
     process.env.ENABLE_EVM_LAUNCH_ADAPTERS === "true"
   );

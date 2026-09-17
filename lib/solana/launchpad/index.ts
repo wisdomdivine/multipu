@@ -76,8 +76,8 @@ export const LAUNCHPAD_META = [
   },
   {
     id: "sherwood" as const,
-    name: "Pons",
-    description: "Robinhood Chain meme launchpad featuring time-prioritized sequencing.",
+    name: "Sherwood",
+    description: "Robinhood Chain liquidity engine for fair-launch memes.",
     image: "/pons.png",
     estimatedFee: "~0.0001 ETH",
     network: "Robinhood Chain",

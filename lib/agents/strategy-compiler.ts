@@ -57,7 +57,7 @@ export function compilePromptToStrategy(prompt: string): ParsedStrategy {
   const slMatch = clean.match(/(?:sl|stop\s*loss|loss|cut|stop\s*at)\s*(?:of|at|around)?\s*(\-?\d+(?:\.\d+)?)\s*%/i)
     || clean.match(/(\d+(?:\.\d+)?)\s*%\s*(?:sl|stop\s*loss|loss)/i);
   if (slMatch && slMatch[1]) {
-    stopLossPct = Math.min(Math.max(parseFloat(slMatch[1]), 2), 80);
+    stopLossPct = Math.min(Math.max(Math.abs(parseFloat(slMatch[1])), 2), 80);
   }
 
   // 5. Trade Amount extraction

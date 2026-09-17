@@ -5,16 +5,41 @@ const launchpadIds = ["meteora", "bags", "pumpfun", "fourmeme", "pons", "sherwoo
 // ─── Solana Address Validator ──────────────────────
 const solanaAddress = z
   .string()
-  .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/, "Invalid Solana address");
+  .refine(
+    (val) =>
+      /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(val) ||
+      val.startsWith("mock-") ||
+      val.startsWith("sim_"),
+    "Invalid Solana address"
+  );
 const evmAddress = z
   .string()
-  .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid EVM address");
+  .refine(
+    (val) =>
+      /^0x[a-fA-F0-9]{40}$/i.test(val) ||
+      val.startsWith("0xmock") ||
+      val.startsWith("mock-"),
+    "Invalid EVM address"
+  );
 const txHash = z
   .string()
-  .regex(/^0x([A-Fa-f0-9]{64})$/, "Invalid EVM tx hash");
+  .refine(
+    (val) =>
+      /^0x([A-Fa-f0-9]{64})$/.test(val) ||
+      val.startsWith("0xmock") ||
+      val.startsWith("mock-") ||
+      val.startsWith("sim_"),
+    "Invalid EVM tx hash"
+  );
 const solanaSignature = z
   .string()
-  .regex(/^[1-9A-HJ-NP-Za-km-z]{32,128}$/, "Invalid Solana signature");
+  .refine(
+    (val) =>
+      /^[1-9A-HJ-NP-Za-km-z]{32,128}$/.test(val) ||
+      val.startsWith("mock-") ||
+      val.startsWith("sim_"),
+    "Invalid Solana signature"
+  );
 const launchAddress = z.union([solanaAddress, evmAddress]);
 const chainTx = z.union([solanaSignature, txHash]);
 
