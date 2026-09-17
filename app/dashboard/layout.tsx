@@ -82,7 +82,7 @@ export default function DashboardLayout({
       await signOut();
       setMobileOpen(false);
       toast.success("Wallet disconnected");
-      router.push("/");
+      router.push("/signin");
     } catch (err) {
       console.error("Failed to disconnect:", err);
       toast.error("Failed to disconnect wallet");

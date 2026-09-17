@@ -92,7 +92,7 @@ export function DisconnectModal({
 
             {/* Content & Account Summary */}
             <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed mt-2 font-[family-name:var(--font-geist-sans)]">
-              Are you sure you want to disconnect? Your session will be invalidated and you will be redirected to the home page.
+              Are you sure you want to disconnect? Your session will be invalidated and you will be taken to sign in again.
             </p>
 
             {formattedAddress && (
