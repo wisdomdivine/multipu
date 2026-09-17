@@ -52,6 +52,7 @@ export async function dryRunWorkflow(
       },
       body: JSON.stringify(params),
       cache: "no-store",
+      signal: AbortSignal.timeout(3500),
     });
 
     if (res.ok) {
@@ -94,6 +95,7 @@ export async function executeKeeperHubWorkflow(
       },
       body: JSON.stringify(params),
       cache: "no-store",
+      signal: AbortSignal.timeout(3500),
     });
 
     if (res.ok) {

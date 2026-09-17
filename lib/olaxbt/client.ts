@@ -15,7 +15,8 @@ export interface OlaXbtStrategySignal {
   lastAnalyzed: string;
 }
 
-const OLAXBT_NEXUS_API = process.env.OLAXBT_NEXUS_API_URL || "https://nexus.olaxbt.xyz/api";
+const OLAXBT_NEXUS_API = process.env.OLAXBT_NEXUS_API_URL || "https://nexus.olaxbt.xyz/api/mcp";
+const OLAXBT_API_KEY = process.env.OLAXBT_API_KEY || "";
 
 /**
  * Deterministically generates or queries strategy signal analysis
@@ -79,15 +80,39 @@ export function calculateStrategySignal(
 
 export async function fetchOlaXbtSignals(symbol: string): Promise<OlaXbtStrategySignal> {
   try {
-    const res = await fetch(`${OLAXBT_NEXUS_API}/signals/${encodeURIComponent(symbol)}`, {
-      next: { revalidate: 30 },
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (OLAXBT_API_KEY) {
+      headers["X-API-KEY"] = OLAXBT_API_KEY;
+    }
+
+    const res = await fetch(`${OLAXBT_NEXUS_API}/tools/call`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        name: "get_strategy_signal",
+        arguments: { symbol: symbol.toUpperCase() },
+      }),
+      signal: AbortSignal.timeout(3500),
     });
+
     if (res.ok) {
       const data = await res.json();
-      if (data.signal) return data.signal;
+      if (data.content?.[0]?.text) {
+        try {
+          const parsed = JSON.parse(data.content[0].text);
+          if (parsed.signal) return parsed.signal;
+          if (parsed.momentumScore !== undefined) return parsed;
+        } catch {
+          // fallback to local calculation if parsing fails
+        }
+      } else if (data.signal) {
+        return data.signal;
+      }
     }
   } catch (err) {
-    // Fallback to local computation
+    // Graceful fallback to deterministic local calculation
   }
 
   return calculateStrategySignal(symbol);
