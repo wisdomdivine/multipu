@@ -62,6 +62,7 @@ export async function GET(request: Request) {
         supabase
           .from("exposure_timeline")
           .select("id, value, label, recorded_at")
+          .eq("wallet_address", wallet)
           .order("recorded_at", { ascending: true }),
       ]);
 
@@ -111,10 +112,10 @@ export async function GET(request: Request) {
       value: Number(r.value),
     }));
 
-    const startVal = exposurePoints.length > 0 ? exposurePoints[0].value : 7635;
-    const currentVal = exposurePoints.length > 0 ? exposurePoints[exposurePoints.length - 1].value : 9284;
+    const startVal = exposurePoints.length > 0 ? exposurePoints[0].value : 0;
+    const currentVal = exposurePoints.length > 0 ? exposurePoints[exposurePoints.length - 1].value : 0;
     const changePct = startVal > 0 ? ((currentVal - startVal) / startVal) * 100 : 0;
-    const changeFormatted = `${changePct >= 0 ? "↑" : "↓"} ${Math.abs(changePct).toFixed(1)}%`;
+    const changeFormatted = startVal > 0 ? `${changePct >= 0 ? "↑" : "↓"} ${Math.abs(changePct).toFixed(1)}%` : "0.0%";
 
     return Response.json({
       stats: {
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
       exposure: {
         total: currentVal.toLocaleString(),
         change: changeFormatted,
-        period: "last month",
+        period: "last 30 days",
         points: exposurePoints,
       },
       tokens,

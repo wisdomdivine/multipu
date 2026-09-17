@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { IconTimeline } from "@tabler/icons-react";
 
 interface ExposurePoint {
   date: string;
@@ -20,26 +21,6 @@ interface ExposureData {
   change: string;
   period: string;
   points: ExposurePoint[];
-}
-
-function generateDynamicFallback(): ExposurePoint[] {
-  const now = new Date();
-  const days = 30;
-  const pattern = [
-    7635, 7420, 7550, 7310, 7680, 7490, 7820, 7610, 7940, 7750,
-    8120, 7890, 8250, 8040, 8390, 8180, 8520, 8310, 8640, 8450,
-    8790, 8580, 8920, 8710, 9050, 8820, 9140, 8950, 9190, 9284
-  ];
-
-  return Array.from({ length: days }).map((_, i) => {
-    const d = new Date(now.getTime() - (days - 1 - i) * 86400000);
-    const day = d.getDate();
-    const month = d.toLocaleDateString("en-US", { month: "short" });
-    return {
-      date: `${day} ${month}`,
-      value: pattern[i] || 9000,
-    };
-  });
 }
 
 interface CustomTooltipProps {
@@ -67,21 +48,19 @@ export function ExposureTimelineChart({
 }: {
   initialData?: ExposureData;
 }) {
-  const dynamicFallback = useMemo(() => generateDynamicFallback(), []);
-
   const [data, setData] = useState<ExposureData>(
     initialData || {
-      total: "9,284",
-      change: "↑ 21.6%",
-      period: "last month",
-      points: dynamicFallback,
+      total: "0",
+      change: "0.0%",
+      period: "last 30 days",
+      points: [],
     }
   );
   const [mounted, setMounted] = useState(false);
 
   // Synchronize when initialData arrives from parent API call
   useEffect(() => {
-    if (initialData?.points?.length) {
+    if (initialData) {
       setData(initialData);
     }
   }, [initialData]);
@@ -93,12 +72,12 @@ export function ExposureTimelineChart({
       fetch("/api/dashboard/exposure")
         .then((res) => (res.ok ? res.json() : null))
         .then((res) => {
-          if (res?.points?.length) {
+          if (res) {
             setData({
-              total: res.formattedTotal || res.total?.toLocaleString() || "9,284",
-              change: res.changeFormatted || "↑ 21.6%",
-              period: res.period || "last month",
-              points: res.points,
+              total: res.formattedTotal || res.total?.toLocaleString() || "0",
+              change: res.changeFormatted || "0.0%",
+              period: res.period || "last 30 days",
+              points: res.points || [],
             });
           }
         })
@@ -106,10 +85,11 @@ export function ExposureTimelineChart({
     }
   }, [initialData]);
 
-  const points = data.points?.length ? data.points : dynamicFallback;
+  const points = data.points ?? [];
+  const hasData = points.length > 0 && points.some((p) => p.value > 0);
 
   return (
-    <div className="rounded-2xl bg-[#181818] p-6 sm:p-8 mb-8">
+    <div className="rounded-2xl bg-[#181818] p-6 sm:p-8 mb-8 border border-white/[0.04]">
       {/* Header Info */}
       <div className="text-sm font-medium text-neutral-400 font-sans mb-1">
         Exposure Timeline
@@ -125,14 +105,16 @@ export function ExposureTimelineChart({
 
       {/* Recharts Canvas */}
       <div className="relative w-full h-48 sm:h-64">
-        {mounted ? (
+        {!mounted ? (
+          <div className="w-full h-full animate-pulse bg-white/[0.02] rounded-lg" />
+        ) : hasData ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={points}
               margin={{ top: 25, right: 10, left: 10, bottom: 5 }}
             >
               <XAxis dataKey="date" hide />
-              <YAxis hide domain={["dataMin - 500", "dataMax + 500"]} />
+              <YAxis hide domain={["dataMin - 100", "dataMax + 100"]} />
               <Tooltip
                 content={<CustomTooltip />}
                 cursor={{
@@ -158,7 +140,17 @@ export function ExposureTimelineChart({
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <div className="w-full h-full animate-pulse bg-white/[0.02] rounded-lg" />
+          <div className="w-full h-full rounded-xl border border-dashed border-white/[0.06] bg-white/[0.01] flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center text-neutral-500 mb-2.5">
+              <IconTimeline size={20} />
+            </div>
+            <p className="text-xs font-medium text-neutral-400 font-sans">
+              No exposure activity yet
+            </p>
+            <p className="text-[11px] text-neutral-500 font-mono mt-1 max-w-xs">
+              Portfolio metrics will populate automatically when you launch or trade tokens.
+            </p>
+          </div>
         )}
       </div>
     </div>

@@ -109,8 +109,27 @@ export async function GET(request: Request) {
         console.warn("Could not query Solana live balance:", balErr);
       }
     } else {
-      // Return realistic mock balance for EVM testnet
-      balance = 2.45;
+      try {
+        const bscRpc = process.env.NEXT_PUBLIC_BSC_RPC_URL || "https://bsc-dataseed.binance.org";
+        const res = await fetch(bscRpc, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method: "eth_getBalance",
+            params: [devWallet.public_key, "latest"],
+            id: 1,
+          }),
+        });
+        if (res.ok) {
+          const json = await res.json();
+          if (json.result) {
+            balance = Number(BigInt(json.result) / BigInt(10 ** 12)) / 1e6;
+          }
+        }
+      } catch (balErr) {
+        console.warn("Could not query EVM live balance:", balErr);
+      }
     }
 
     return Response.json({

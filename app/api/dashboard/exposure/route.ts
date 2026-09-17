@@ -8,11 +8,17 @@ export async function GET(request: Request) {
     return Response.json({ error: "Rate limited" }, { status: 429 });
   }
 
+  const auth = await getAuth(request);
+  if (!auth.isLoggedIn) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const supabase = createAdminSupabase();
     const { data: rows, error } = await supabase
       .from("exposure_timeline")
       .select("id, value, label, recorded_at")
+      .eq("wallet_address", auth.walletAddress)
       .order("recorded_at", { ascending: true });
 
     if (error) {
@@ -26,17 +32,17 @@ export async function GET(request: Request) {
       recordedAt: r.recorded_at,
     }));
 
-    const startVal = points.length > 0 ? points[0].value : 7635;
-    const currentVal = points.length > 0 ? points[points.length - 1].value : 9284;
+    const startVal = points.length > 0 ? points[0].value : 0;
+    const currentVal = points.length > 0 ? points[points.length - 1].value : 0;
     const changePct = startVal > 0 ? ((currentVal - startVal) / startVal) * 100 : 0;
-    const changeFormatted = `${changePct >= 0 ? "↑" : "↓"} ${Math.abs(changePct).toFixed(1)}%`;
+    const changeFormatted = startVal > 0 ? `${changePct >= 0 ? "↑" : "↓"} ${Math.abs(changePct).toFixed(1)}%` : "0.0%";
 
     return Response.json({
       total: currentVal,
       formattedTotal: currentVal.toLocaleString(),
       changePct: Math.round(changePct * 10) / 10,
       changeFormatted,
-      period: "last month",
+      period: "last 30 days",
       points,
     });
   } catch (err) {
