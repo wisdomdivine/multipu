@@ -16,6 +16,7 @@ import {
   IconBell,
   IconLogout,
   IconArrowsExchange,
+  IconLoader2,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -41,7 +42,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { session, signOut } = useAuth();
+  const { session, signOut, isLoading } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false);
@@ -52,8 +53,16 @@ export default function DashboardLayout({
     setMobileOpen(false);
   }, [pathname]);
 
-  // Check unread notifications count
+  // Auth guard: redirect unauthenticated users to /signin immediately
   useEffect(() => {
+    if (!isLoading && !session.isLoggedIn) {
+      router.replace("/signin");
+    }
+  }, [isLoading, session.isLoggedIn, router]);
+
+  // Check unread notifications count only when authenticated
+  useEffect(() => {
+    if (!session.isLoggedIn) return;
     fetch("/api/notifications")
       .then((res) => res.json())
       .then((data) => {
@@ -62,7 +71,7 @@ export default function DashboardLayout({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [session.isLoggedIn]);
 
   // Close on escape key
   useEffect(() => {
@@ -102,6 +111,29 @@ export default function DashboardLayout({
   const walletShort = session.isLoggedIn
     ? `${session.walletAddress.slice(0, 4)}...${session.walletAddress.slice(-4)}`
     : null;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center animate-pulse">
+            <Image
+              src="/logo.png"
+              alt="Multipu"
+              width={28}
+              height={28}
+              className="w-7 h-7 object-contain"
+            />
+          </div>
+          <IconLoader2 className="w-5 h-5 text-accent animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!session.isLoggedIn) {
+    return null;
+  }
 
   return (
     <div className="h-screen overflow-hidden bg-background">

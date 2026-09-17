@@ -13,6 +13,16 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ─── Route Guard: Unauthenticated Dashboard Access ───
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    const sessionCookie = request.cookies.get("multipu_session");
+    if (!sessionCookie?.value) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/signin";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // ─── Request Tracing & Security Headers ───────────
   const response = NextResponse.next();
 
