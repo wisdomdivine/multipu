@@ -4,23 +4,48 @@ import { assertTrustedOrigin } from "@/lib/request-security";
 import { StrategyRules, StrategySimulationResult } from "@/lib/agents/types";
 import { z } from "zod";
 
-const simulateSchema = z.object({
-  rules: z.object({
-    chain: z.enum(["solana", "bsc", "robinhood"]),
-    launchpads: z.array(z.string()),
-    minVolume24hUsd: z.number(),
-    minLiquiditySol: z.number(),
-    minOlaXbtScore: z.number(),
-    maxTokenAgeHours: z.number(),
-    tradeAmount: z.number(),
-    takeProfitPct: z.number(),
-    stopLossPct: z.number(),
-    maxSlippagePct: z.number(),
-    maxDailyTrades: z.number(),
-    mevProtection: z.boolean().default(true),
-    honeypotCheck: z.boolean().default(true),
-  }),
-});
+const simulateSchema = z
+  .object({
+    rules: z
+      .object({
+        chain: z
+          .preprocess(
+            (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+            z.enum(["solana", "bsc", "robinhood"]).default("solana")
+          )
+          .default("solana"),
+        launchpads: z
+          .preprocess(
+            (val) =>
+              Array.isArray(val)
+                ? val.map((x) => String(x).toLowerCase().trim())
+                : typeof val === "string"
+                ? [val.toLowerCase().trim()]
+                : ["pumpfun"],
+            z.array(z.string())
+          )
+          .default(["pumpfun"]),
+        minVolume24hUsd: z.coerce.number().optional().default(5000),
+        minLiquiditySol: z.coerce.number().optional().default(10),
+        minOlaXbtScore: z.coerce.number().optional().default(75),
+        maxTokenAgeHours: z.coerce.number().optional().default(24),
+        tradeAmount: z.coerce.number().positive().default(0.2),
+        takeProfitPct: z.coerce
+          .number()
+          .optional()
+          .transform((v) => (v !== undefined ? Math.abs(v) : 35)),
+        stopLossPct: z.coerce
+          .number()
+          .optional()
+          .transform((v) => (v !== undefined ? Math.abs(v) : 12)),
+        maxSlippagePct: z.coerce.number().optional().default(2.5),
+        maxDailyTrades: z.coerce.number().optional().default(10),
+        mevProtection: z.boolean().default(true),
+        honeypotCheck: z.boolean().default(true),
+      })
+      .passthrough(),
+  })
+  .passthrough();
 
 export async function POST(request: Request) {
   const originError = assertTrustedOrigin(request);

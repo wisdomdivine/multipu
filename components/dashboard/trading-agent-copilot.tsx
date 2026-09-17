@@ -286,17 +286,35 @@ export function TradingAgentCopilot() {
     setLoadingStatus(`Deploying ${mode.toUpperCase()} trading agent...`);
 
     try {
+      const sanitizedRules = {
+        ...strategy.rules,
+        name: strategy.name,
+        chain: String(strategy.rules.chain || "solana").toLowerCase().trim(),
+        launchpads: (strategy.rules.launchpads || ["pumpfun"]).map((l) => String(l).toLowerCase().trim()),
+        tradeAmount: Number(strategy.rules.tradeAmount) || 0.1,
+        takeProfitPct: Math.abs(Number(strategy.rules.takeProfitPct)) || 35,
+        stopLossPct: Math.abs(Number(strategy.rules.stopLossPct)) || 15,
+      };
+
       const res = await fetch("/api/agents/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          rules: strategy.rules,
+          rules: sanitizedRules,
           mode,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to deploy agent");
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        // Response was not JSON
+      }
+
+      if (!res.ok) {
+        throw new Error(data.error || `Deployment error (status ${res.status})`);
+      }
 
       setIsAgentRunning(true);
       toast.success(
@@ -322,7 +340,10 @@ export function TradingAgentCopilot() {
         },
       ]);
     } catch (err: any) {
-      toast.error(err.message || "Failed to launch agent");
+      const msg = err.message === "Failed to fetch"
+        ? "Network error: failed to communicate with execution server. Please try again."
+        : err.message || "Failed to launch agent";
+      toast.error(msg);
     } finally {
       setIsLoading(false);
       setLoadingStatus("");

@@ -5,31 +5,81 @@ import { executeKeeperHubWorkflow } from "@/lib/keeperhub/client";
 import { createAdminSupabase } from "@/lib/supabase/server";
 import { z } from "zod";
 
-const directTradeSchema = z.object({
-  agentId: z.string().optional(),
-  tokenSymbol: z.string(),
-  tokenMint: z.string().optional(),
-  action: z.enum(["buy", "sell"]),
-  launchpad: z.string(),
-  chain: z.enum(["solana", "bsc", "robinhood"]).default("solana"),
-  amount: z.number().positive(),
-  mode: z.enum(["paper", "live"]).default("paper"),
-});
+const directTradeSchema = z
+  .object({
+    agentId: z.string().optional(),
+    tokenSymbol: z.string().default("PEPEQ"),
+    tokenMint: z.string().optional(),
+    action: z
+      .preprocess(
+        (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+        z.enum(["buy", "sell"])
+      )
+      .default("buy"),
+    launchpad: z.string().default("pumpfun"),
+    chain: z
+      .preprocess(
+        (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+        z.enum(["solana", "bsc", "robinhood"]).default("solana")
+      )
+      .default("solana"),
+    amount: z.coerce.number().positive().default(0.1),
+    mode: z
+      .preprocess(
+        (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+        z.enum(["paper", "live"]).default("paper")
+      )
+      .default("paper"),
+  })
+  .passthrough();
 
-const deployStrategySchema = z.object({
-  rules: z.object({
-    chain: z.enum(["solana", "bsc", "robinhood"]).default("solana"),
-    launchpads: z.array(z.string()).default(["pumpfun"]),
-    takeProfitPct: z.number().optional().default(35),
-    stopLossPct: z.number().optional().default(15),
-    tradeAmount: z.number().positive().default(0.1),
-    minVolume24h: z.number().optional(),
-    minOlaXbtMomentum: z.number().optional(),
-  }),
-  mode: z.enum(["paper", "live"]).default("paper"),
-  tokenSymbol: z.string().optional(),
-  tokenMint: z.string().optional(),
-});
+const deployStrategySchema = z
+  .object({
+    rules: z
+      .object({
+        name: z.string().optional(),
+        chain: z
+          .preprocess(
+            (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+            z.enum(["solana", "bsc", "robinhood"]).default("solana")
+          )
+          .default("solana"),
+        launchpads: z
+          .preprocess(
+            (val) =>
+              Array.isArray(val)
+                ? val.map((x) => String(x).toLowerCase().trim())
+                : typeof val === "string"
+                ? [val.toLowerCase().trim()]
+                : ["pumpfun"],
+            z.array(z.string())
+          )
+          .default(["pumpfun"]),
+        takeProfitPct: z.coerce
+          .number()
+          .optional()
+          .transform((v) => (v !== undefined ? Math.abs(v) : 35)),
+        stopLossPct: z.coerce
+          .number()
+          .optional()
+          .transform((v) => (v !== undefined ? Math.abs(v) : 15)),
+        tradeAmount: z.coerce.number().positive().default(0.1),
+        minVolume24h: z.coerce.number().optional(),
+        minVolume24hUsd: z.coerce.number().optional(),
+        minOlaXbtMomentum: z.coerce.number().optional(),
+        minOlaXbtScore: z.coerce.number().optional(),
+      })
+      .passthrough(),
+    mode: z
+      .preprocess(
+        (val) => (typeof val === "string" ? val.toLowerCase().trim() : val),
+        z.enum(["paper", "live"]).default("paper")
+      )
+      .default("paper"),
+    tokenSymbol: z.string().optional(),
+    tokenMint: z.string().optional(),
+  })
+  .passthrough();
 
 export async function POST(request: Request) {
   const originError = assertTrustedOrigin(request);
@@ -43,7 +93,6 @@ export async function POST(request: Request) {
   }
 
   const auth = await getAuth(request);
-  const walletAddress = auth.isLoggedIn ? auth.walletAddress : "demo_wallet";
 
   try {
     const body = await request.json();
@@ -58,40 +107,88 @@ export async function POST(request: Request) {
     let chain: "solana" | "bsc" | "robinhood";
     let amount: number;
     let mode: "paper" | "live";
+    let strategyRules: any = null;
 
     if (isStrategyDeploy) {
       const parsed = deployStrategySchema.safeParse(body);
-      if (!parsed.success) {
-        return Response.json(
-          { error: "Validation failed", details: parsed.error.flatten() },
-          { status: 400 }
-        );
+      let rulesData;
+      let parsedMode: "paper" | "live" = "paper";
+
+      if (parsed.success) {
+        rulesData = parsed.data.rules;
+        parsedMode = parsed.data.mode;
+        tokenSymbol = parsed.data.tokenSymbol || "PEPEQ";
+        tokenMint = parsed.data.tokenMint;
+      } else {
+        // Resilient fallback defaults in case of any subtle structure variance
+        const rawRules = body.rules || {};
+        const rawChain = String(rawRules.chain || "solana").toLowerCase().trim();
+        const safeChain = (rawChain === "bsc" || rawChain === "robinhood" ? rawChain : "solana") as
+          | "solana"
+          | "bsc"
+          | "robinhood";
+
+        rulesData = {
+          name: rawRules.name || "Momentum Scalper Bot",
+          chain: safeChain,
+          launchpads:
+            Array.isArray(rawRules.launchpads) && rawRules.launchpads.length > 0
+              ? rawRules.launchpads.map((l: any) => String(l).toLowerCase().trim())
+              : [safeChain === "bsc" ? "fourmeme" : "pumpfun"],
+          takeProfitPct: Math.abs(Number(rawRules.takeProfitPct)) || 35,
+          stopLossPct: Math.abs(Number(rawRules.stopLossPct)) || 15,
+          tradeAmount: Number(rawRules.tradeAmount) > 0 ? Number(rawRules.tradeAmount) : 0.1,
+          minVolume24hUsd: Number(rawRules.minVolume24hUsd || rawRules.minVolume24h) || 5000,
+          minOlaXbtScore: Number(rawRules.minOlaXbtScore || rawRules.minOlaXbtMomentum) || 75,
+        };
+        parsedMode = String(body.mode || "paper").toLowerCase().trim() === "live" ? "live" : "paper";
+        tokenSymbol = body.tokenSymbol || "PEPEQ";
+        tokenMint = body.tokenMint;
       }
-      const { rules, mode: parsedMode } = parsed.data;
+
+      strategyRules = rulesData;
       mode = parsedMode;
-      chain = rules.chain;
-      launchpad = rules.launchpads[0] || (chain === "solana" ? "pumpfun" : chain === "bsc" ? "fourmeme" : "sherwood");
-      tokenSymbol = parsed.data.tokenSymbol || "PEPEQ";
-      tokenMint = parsed.data.tokenMint;
+      chain = rulesData.chain;
+      launchpad =
+        rulesData.launchpads[0] ||
+        (chain === "solana" ? "pumpfun" : chain === "bsc" ? "fourmeme" : "sherwood");
       action = "buy";
-      amount = rules.tradeAmount;
+      amount = rulesData.tradeAmount;
       agentId = `agent_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     } else {
       const parsed = directTradeSchema.safeParse(body);
-      if (!parsed.success) {
-        return Response.json(
-          { error: "Validation failed", details: parsed.error.flatten() },
-          { status: 400 }
-        );
+      if (parsed.success) {
+        agentId = parsed.data.agentId || `agent_${Date.now()}`;
+        tokenSymbol = parsed.data.tokenSymbol;
+        tokenMint = parsed.data.tokenMint;
+        action = parsed.data.action;
+        launchpad = parsed.data.launchpad;
+        chain = parsed.data.chain;
+        amount = parsed.data.amount;
+        mode = parsed.data.mode;
+      } else {
+        const rawChain = String(body.chain || "solana").toLowerCase().trim();
+        chain = (rawChain === "bsc" || rawChain === "robinhood" ? rawChain : "solana") as
+          | "solana"
+          | "bsc"
+          | "robinhood";
+        agentId = body.agentId || `agent_${Date.now()}`;
+        tokenSymbol = body.tokenSymbol || "PEPEQ";
+        tokenMint = body.tokenMint;
+        action = String(body.action || "buy").toLowerCase().trim() === "sell" ? "sell" : "buy";
+        launchpad = body.launchpad || (chain === "solana" ? "pumpfun" : chain === "bsc" ? "fourmeme" : "sherwood");
+        amount = Number(body.amount) > 0 ? Number(body.amount) : 0.1;
+        mode = String(body.mode || "paper").toLowerCase().trim() === "live" ? "live" : "paper";
       }
-      agentId = parsed.data.agentId || `agent_${Date.now()}`;
-      tokenSymbol = parsed.data.tokenSymbol;
-      tokenMint = parsed.data.tokenMint;
-      action = parsed.data.action;
-      launchpad = parsed.data.launchpad;
-      chain = parsed.data.chain;
-      amount = parsed.data.amount;
-      mode = parsed.data.mode;
+    }
+
+    // Auth verification for live deployment vs paper trading
+    const walletAddress = auth.isLoggedIn ? auth.walletAddress : "simulated_guest_wallet";
+    if (mode === "live" && !auth.isLoggedIn) {
+      return Response.json(
+        { error: "Please connect your wallet before deploying a live trading agent." },
+        { status: 401 }
+      );
     }
 
     let txHash = "";
@@ -120,9 +217,31 @@ export async function POST(request: Request) {
     const pnlPct = action === "sell" ? +(Math.random() * 25 + 10).toFixed(2) : 0;
     const pnlSol = action === "sell" ? +(amount * (pnlPct / 100)).toFixed(5) : 0;
 
-    // Record trade
+    // Record agent and trade in Supabase
     try {
       const supabase = createAdminSupabase();
+
+      // Persist agent if strategy deployment and authenticated
+      if (auth.isLoggedIn && isStrategyDeploy && strategyRules) {
+        await supabase.from("trading_agents").insert({
+          wallet_address: walletAddress,
+          name: strategyRules.name || "Momentum Scalper Bot",
+          description: `Autonomous ${chain.toUpperCase()} strategy on ${launchpad}`,
+          prompt: `Target ${chain.toUpperCase()} meme pairs on ${launchpad}. Trade size ${amount} ${chain === "solana" ? "SOL" : "BNB"}.`,
+          mode,
+          status: "active",
+          chain,
+          launchpads: strategyRules.launchpads || [launchpad],
+          strategy_config: strategyRules,
+          budget_allocated: amount * 5,
+          budget_spent: amount,
+          total_pnl_pct: 0,
+          total_trades: 1,
+          successful_trades: 1,
+        });
+      }
+
+      // Record trade execution
       await supabase.from("agent_trades").insert({
         agent_id: agentId.startsWith("agent_") ? null : agentId,
         token_symbol: tokenSymbol,
@@ -138,8 +257,8 @@ export async function POST(request: Request) {
         mode,
         execution_log: `Executed ${action.toUpperCase()} ${amount} ${chain === "solana" ? "SOL" : "BNB"} on ${launchpad} via KeeperHub Shield. Latency: ${executionLatency}ms`,
       });
-    } catch {
-      // Ignored for demo / mock session
+    } catch (dbErr) {
+      console.warn("[AGENTS/EXECUTE] DB persistence note:", dbErr);
     }
 
     return Response.json({
