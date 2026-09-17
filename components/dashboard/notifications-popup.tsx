@@ -29,6 +29,7 @@ export function NotificationsPopup({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("ALL");
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const popupRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +42,16 @@ export function NotificationsPopup({
         const data = await res.json();
         const items: NotificationItem[] = data.notifications || [];
         setNotifications(items);
+
+        if (data.walletAddress) {
+          setWalletAddress(data.walletAddress);
+          try {
+            const saved = localStorage.getItem(`multipu_read_notifs_${data.walletAddress}`);
+            if (saved) {
+              setReadIds(new Set(JSON.parse(saved)));
+            }
+          } catch {}
+        }
       }
     } catch {
       // Ignore network errors
@@ -94,6 +105,14 @@ export function NotificationsPopup({
   const markAllAsRead = () => {
     const allIds = new Set(notifications.map((n) => n.id));
     setReadIds(allIds);
+    if (walletAddress) {
+      try {
+        localStorage.setItem(
+          `multipu_read_notifs_${walletAddress}`,
+          JSON.stringify(Array.from(allIds))
+        );
+      } catch {}
+    }
     onUnreadChange?.(false);
   };
 
@@ -102,6 +121,14 @@ export function NotificationsPopup({
     setReadIds((prev) => {
       const updated = new Set(prev);
       updated.add(id);
+      if (walletAddress) {
+        try {
+          localStorage.setItem(
+            `multipu_read_notifs_${walletAddress}`,
+            JSON.stringify(Array.from(updated))
+          );
+        } catch {}
+      }
       return updated;
     });
   };

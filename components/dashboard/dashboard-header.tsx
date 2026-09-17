@@ -39,13 +39,25 @@ export function DashboardHeader({
 
   useEffect(() => {
     fetch("/api/notifications")
-      .then((res) => res.json())
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data.unreadCount > 0) {
-          setInternalHasUnread(true);
+        if (!data?.notifications) {
+          setInternalHasUnread(false);
+          return;
         }
+        let readIds = new Set<string>();
+        if (data.walletAddress && typeof window !== "undefined") {
+          try {
+            const saved = localStorage.getItem(`multipu_read_notifs_${data.walletAddress}`);
+            if (saved) readIds = new Set(JSON.parse(saved));
+          } catch {}
+        }
+        const hasUnreadItems = data.notifications.some((n: any) => !readIds.has(n.id));
+        setInternalHasUnread(hasUnreadItems);
       })
-      .catch(() => {});
+      .catch(() => {
+        setInternalHasUnread(false);
+      });
   }, []);
 
   const hasUnread =

@@ -64,13 +64,25 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!session.isLoggedIn) return;
     fetch("/api/notifications")
-      .then((res) => res.json())
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data.unreadCount > 0) {
-          setHasUnread(true);
+        if (!data?.notifications) {
+          setHasUnread(false);
+          return;
         }
+        let readIds = new Set<string>();
+        if (data.walletAddress && typeof window !== "undefined") {
+          try {
+            const saved = localStorage.getItem(`multipu_read_notifs_${data.walletAddress}`);
+            if (saved) readIds = new Set(JSON.parse(saved));
+          } catch {}
+        }
+        const hasUnreadItems = data.notifications.some((n: any) => !readIds.has(n.id));
+        setHasUnread(hasUnreadItems);
       })
-      .catch(() => {});
+      .catch(() => {
+        setHasUnread(false);
+      });
   }, [session.isLoggedIn]);
 
   // Close on escape key
