@@ -123,6 +123,7 @@ export function CandlestickChart({
 
   // Mount Lightweight Charts canvas once per timeframe/mount
   useEffect(() => {
+    initialFittedRef.current = false;
     if (!containerRef.current) return;
 
     // Clean up previous chart instance
@@ -363,14 +364,21 @@ export function CandlestickChart({
 
         {/* Canvas Chart Area */}
         <div className="w-full h-[500px] rounded-xl overflow-hidden bg-[#121212] relative">
-          {loading && candles.length === 0 ? (
-            <div className="w-full h-full flex items-center justify-center">
+          {/* Permanent Chart Container */}
+          <div ref={containerRef} className="w-full h-full" />
+
+          {/* Loading Overlay */}
+          {loading && candles.length === 0 && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#121212]">
               <span className="text-xs font-mono text-neutral-500">
                 Loading market data...
               </span>
             </div>
-          ) : !loading && candles.length === 0 ? (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 text-center">
+          )}
+
+          {/* No Indexed AMM Transactions Overlay */}
+          {!loading && candles.length === 0 && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#121212] gap-2 p-6 text-center">
               <span className="text-sm font-sans font-medium text-white">
                 DEX Chart
               </span>
@@ -383,8 +391,6 @@ export function CandlestickChart({
                 </div>
               )}
             </div>
-          ) : (
-            <div ref={containerRef} className="w-full h-full" />
           )}
         </div>
       </div>
