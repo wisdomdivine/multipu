@@ -1,11 +1,12 @@
 import "server-only";
 
-import { APP_PHASE, SOLANA_NETWORK } from "@/lib/runtime-config";
+import { getEnvironmentScope } from "@/lib/env-scope.server";
 
 export function isMainnetLaunchAllowedOnServer() {
-  if (SOLANA_NETWORK !== "mainnet-beta") return true;
+  const scope = getEnvironmentScope();
+  if (scope.network !== "mainnet-beta") return true;
   return (
-    APP_PHASE === "mainnet" &&
+    scope.appPhase === "mainnet" &&
     process.env.ENABLE_MAINNET_LAUNCHES !== "false"
   );
 }
@@ -16,7 +17,8 @@ export function getLaunchPolicyError() {
 }
 
 export function isEvmLaunchAllowedOnServer() {
-  if (APP_PHASE !== "mainnet") return true;
+  const scope = getEnvironmentScope();
+  if (scope.appPhase !== "mainnet") return true;
   return (
     process.env.ENABLE_MAINNET_LAUNCHES !== "false" &&
     process.env.ENABLE_EVM_LAUNCH_ADAPTERS !== "false"
