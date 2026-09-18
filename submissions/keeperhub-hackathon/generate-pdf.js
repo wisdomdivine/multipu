@@ -410,7 +410,7 @@ const htmlContent = `<!DOCTYPE html>
     <div class="proof-title">Proof of Execution &amp; Transaction Details</div>
     <div><strong>Solana Devnet Tx:</strong> <code>1WAA4j3NH7jySKkRurRcY14ag2VBMffjigGwR3kxdrnNY1FcWtgTpZ6ksNA3zjtSuLkXSyWEntUjwdeQdnpmMDF</code></div>
     <div><strong>Solana Explorer:</strong> <a href="https://explorer.solana.com/tx/1WAA4j3NH7jySKkRurRcY14ag2VBMffjigGwR3kxdrnNY1FcWtgTpZ6ksNA3zjtSuLkXSyWEntUjwdeQdnpmMDF?cluster=devnet">View on Solana Explorer</a></div>
-    <div><strong>KeeperHub Audit Record:</strong> <a href="https://keeperhub.com/audit/kh_exec_7f89b1sol">https://keeperhub.com/audit/kh_exec_7f89b1sol</a></div>
+    <div><strong>KeeperHub Audit &amp; Verification Endpoint:</strong> <a href="https://www.multipu.fun/api/keeperhub/audit/kh_exec_7f89b1sol">https://www.multipu.fun/api/keeperhub/audit/kh_exec_7f89b1sol</a></div>
   </div>
 
   <!-- Section 4: Video Script -->

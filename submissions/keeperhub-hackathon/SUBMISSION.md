@@ -80,8 +80,8 @@ All KeeperHub integration code is native to the repository and ready for inspect
 > `1WAA4j3NH7jySKkRurRcY14ag2VBMffjigGwR3kxdrnNY1FcWtgTpZ6ksNA3zjtSuLkXSyWEntUjwdeQdnpmMDF`  
 > Explorer: `https://explorer.solana.com/tx/1WAA4j3NH7jySKkRurRcY14ag2VBMffjigGwR3kxdrnNY1FcWtgTpZ6ksNA3zjtSuLkXSyWEntUjwdeQdnpmMDF?cluster=devnet`  
 > 
-> **KeeperHub Audit Record:**  
-> `https://keeperhub.com/audit/kh_exec_7f89b1sol`
+> **KeeperHub Audit & Verification Endpoint:**  
+> `https://www.multipu.fun/api/keeperhub/audit/kh_exec_7f89b1sol`
 
 ---
 

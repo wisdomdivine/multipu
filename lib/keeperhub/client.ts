@@ -116,7 +116,7 @@ export async function executeKeeperHubWorkflow(
     status: "confirmed",
     chain: params.chain,
     executionLatencyMs: 420,
-    auditRecordUrl: `https://keeperhub.com/audit/${executionId}`,
+    auditRecordUrl: `https://www.multipu.fun/api/keeperhub/audit/${executionId}`,
     gasSpentFormatted: params.chain === "solana" ? "0.000005 SOL" : "0.00018 BNB",
   };
 }
