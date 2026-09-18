@@ -83,6 +83,7 @@ export function CandlestickChart({
     }
 
     let isSubscribed = true;
+    setLoading(true);
 
     const fetchOHLCV = async () => {
       try {
@@ -368,7 +369,7 @@ export function CandlestickChart({
                 Loading market data...
               </span>
             </div>
-          ) : candles.length === 0 ? (
+          ) : !loading && candles.length === 0 ? (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-6 text-center">
               <span className="text-sm font-sans font-medium text-white">
                 DEX Chart
