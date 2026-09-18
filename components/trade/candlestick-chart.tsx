@@ -83,7 +83,6 @@ export function CandlestickChart({
     }
 
     let isSubscribed = true;
-    setLoading(true);
 
     const fetchOHLCV = async () => {
       try {
@@ -101,7 +100,9 @@ export function CandlestickChart({
 
         const data = await res.json();
         if (isSubscribed) {
-          setCandles(Array.isArray(data?.candles) ? data.candles : []);
+          if (Array.isArray(data?.candles)) {
+            setCandles(data.candles);
+          }
           setLoading(false);
         }
       } catch {
@@ -110,7 +111,8 @@ export function CandlestickChart({
     };
 
     fetchOHLCV();
-    const pollInterval = setInterval(fetchOHLCV, 20000);
+    // Poll every 10 seconds for live active market updates
+    const pollInterval = setInterval(fetchOHLCV, 10000);
 
     return () => {
       isSubscribed = false;
@@ -118,11 +120,11 @@ export function CandlestickChart({
     };
   }, [pairAddress, normalizedChain, timeframe]);
 
-  // Initialize and mount Lightweight Charts canvas
+  // Mount Lightweight Charts canvas once per timeframe/mount
   useEffect(() => {
-    if (!containerRef.current || candles.length === 0) return;
+    if (!containerRef.current) return;
 
-    // Clean up previous instance if any
+    // Clean up previous chart instance
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
@@ -168,7 +170,7 @@ export function CandlestickChart({
           bottom: 0.22,
         },
       },
-      width: container.clientWidth,
+      width: container.clientWidth || 800,
       height: 500,
     });
 
@@ -199,25 +201,6 @@ export function CandlestickChart({
       },
     });
 
-    // Format data
-    const formattedCandles = candles.map((c) => ({
-      time: c.time as UTCTimestamp,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
-
-    const formattedVolumes = candles.map((c) => ({
-      time: c.time as UTCTimestamp,
-      value: c.volume,
-      color: c.close >= c.open ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)",
-    }));
-
-    candleSeries.setData(formattedCandles);
-    volumeSeries.setData(formattedVolumes);
-    chart.timeScale().fitContent();
-
     // Hover crosshair tracking
     chart.subscribeCrosshairMove((param) => {
       if (!param.point || !param.time || param.point.x < 0 || param.point.y < 0) {
@@ -240,8 +223,8 @@ export function CandlestickChart({
     // Resize observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        if (entry.contentRect) {
-          chart.applyOptions({
+        if (entry.contentRect && chartRef.current) {
+          chartRef.current.applyOptions({
             width: entry.contentRect.width,
             height: 500,
           });
@@ -262,7 +245,53 @@ export function CandlestickChart({
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
     };
-  }, [candles, currentPrice]);
+  }, [timeframe]);
+
+  // Seamless in-place updates when candles arrive
+  const initialFittedRef = useRef(false);
+
+  useEffect(() => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current || candles.length === 0) return;
+
+    const formattedCandles = candles.map((c) => ({
+      time: c.time as UTCTimestamp,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+    }));
+
+    const formattedVolumes = candles.map((c) => ({
+      time: c.time as UTCTimestamp,
+      value: c.volume,
+      color: c.close >= c.open ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)",
+    }));
+
+    candleSeriesRef.current.setData(formattedCandles);
+    volumeSeriesRef.current.setData(formattedVolumes);
+
+    if (!initialFittedRef.current && chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+      initialFittedRef.current = true;
+    }
+  }, [candles]);
+
+  // Real-time tick update if currentPrice moves
+  useEffect(() => {
+    if (!candleSeriesRef.current || candles.length === 0 || currentPrice <= 0) return;
+
+    const last = candles[candles.length - 1];
+    const updatedHigh = Math.max(last.high, currentPrice);
+    const updatedLow = Math.min(last.low, currentPrice);
+
+    candleSeriesRef.current.update({
+      time: last.time as UTCTimestamp,
+      open: last.open,
+      high: updatedHigh,
+      low: updatedLow,
+      close: currentPrice,
+    });
+  }, [currentPrice, candles]);
 
   const latestPrice = candles.length > 0 ? candles[candles.length - 1].close : currentPrice;
 
