@@ -1,136 +1,105 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-interface Trade {
+export interface ExecutedTrade {
   id: string;
   type: "buy" | "sell";
   amountPay: number;
   amountReceive: number;
   wallet: string;
   timestamp: string;
+  txHash?: string;
+  explorerUrl?: string;
 }
 
 interface TradeHistoryProps {
   launchId: string;
-  refreshTrigger: number;
+  gasSymbol: string;
+  sessionTrades?: ExecutedTrade[];
+  txns24h?: { buys: number; sells: number };
 }
 
-export function TradeHistory({ launchId, refreshTrigger }: TradeHistoryProps) {
-  const [trades, setTrades] = useState<Trade[]>([]);
-
-  // Generate some realistic seed trades when component mounts
-  useEffect(() => {
-    const list: Trade[] = [];
-    const now = Date.now();
-    for (let i = 0; i < 5; i++) {
-      const type = Math.random() > 0.5 ? ("buy" as const) : ("sell" as const);
-      const amountPay = parseFloat((Math.random() * 2 + 0.1).toFixed(4));
-      const amountReceive = amountPay * 1000000;
-      const wallet = "0x" + Math.random().toString(16).substring(2, 6) + "..." + Math.random().toString(16).substring(2, 6);
-      const timeOffset = (i + 1) * 3 * 60 * 1000; // minutes ago
-      
-      list.push({
-        id: "seed-" + i,
-        type,
-        amountPay,
-        amountReceive,
-        wallet,
-        timestamp: new Date(now - timeOffset).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      });
-    }
-    setTrades(list);
-  }, [launchId]);
-
-  // Simulate live incoming trades from other wallets in real time
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const type = Math.random() > 0.45 ? ("buy" as const) : ("sell" as const);
-      const amountPay = parseFloat((Math.random() * 1.8 + 0.02).toFixed(4));
-      const amountReceive = amountPay * 1000000;
-      const wallet = "0x" + Math.random().toString(16).substring(2, 6) + "..." + Math.random().toString(16).substring(2, 6);
-      
-      const newTrade: Trade = {
-        id: "live-" + Date.now(),
-        type,
-        amountPay,
-        amountReceive,
-        wallet,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      
-      setTrades((prev) => [newTrade, ...prev.slice(0, 9)]);
-    }, Math.random() * 3000 + 4000); // Trigger every 4-7 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // When a user makes a trade, append it to the trade history list
-  useEffect(() => {
-    if (refreshTrigger > 0) {
-      // Simulate adding a new user transaction locally
-      const randomType = Math.random() > 0.5 ? "buy" : "sell";
-      const randomAmount = parseFloat((Math.random() * 0.5 + 0.05).toFixed(4));
-      const newUserTrade: Trade = {
-        id: "user-" + Date.now(),
-        type: randomType as "buy" | "sell",
-        amountPay: randomAmount,
-        amountReceive: randomAmount * 1000000,
-        wallet: "You",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setTrades((prev) => [newUserTrade, ...prev.slice(0, 9)]);
-    }
-  }, [refreshTrigger]);
+export function TradeHistory({
+  launchId,
+  gasSymbol,
+  sessionTrades = [],
+  txns24h,
+}: TradeHistoryProps) {
+  const total24h = (txns24h?.buys || 0) + (txns24h?.sells || 0);
 
   return (
-    <div className="bg-[#181818] p-6 rounded-2xl border border-white/[0.04] flex flex-col gap-4">
+    <div className="bg-[#181818] p-6 rounded-2xl flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-white font-sans">
-            Recent Trades
+            Trade Activity
           </h3>
           <p className="text-xs text-neutral-400 font-sans mt-0.5">
-            Real-time settled order flow
+            Verified on-chain executions and session order flow
           </p>
         </div>
-        <span className="text-xs font-mono text-neutral-400 bg-white/[0.04] px-2.5 py-1 rounded-full border border-white/[0.04]">
-          Live stream
-        </span>
-      </div>
-      
-      <div className="flex flex-col gap-2">
-        {trades.map((trade) => (
-          <div
-            key={trade.id}
-            className="bg-[#141414] rounded-xl p-3 border border-white/[0.04] hover:border-white/[0.08] transition-colors flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className={cn(
-                  "uppercase tracking-wider text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full",
-                  trade.type === "buy" ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
-                )}
-              >
-                {trade.type}
-              </span>
-              <span className="font-mono text-xs text-neutral-300">
-                {trade.wallet}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-xs text-white font-medium">
-                {trade.amountPay.toFixed(4)}
-              </span>
-              <span className="text-[11px] font-mono text-neutral-500">
-                {trade.timestamp}
-              </span>
-            </div>
+        {total24h > 0 && (
+          <div className="flex items-center gap-2 text-xs font-mono">
+            <span className="text-neutral-300">
+              24h: {txns24h?.buys || 0} buys / {txns24h?.sells || 0} sells
+            </span>
           </div>
-        ))}
+        )}
       </div>
+
+      {sessionTrades.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {sessionTrades.map((trade) => (
+            <div
+              key={trade.id}
+              className="bg-[#141414] rounded-xl p-3 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "uppercase tracking-wider text-[10px] font-mono font-semibold px-2 py-0.5 rounded",
+                    trade.type === "buy"
+                      ? "text-emerald-400 bg-emerald-400/10"
+                      : "text-red-400 bg-red-400/10"
+                  )}
+                >
+                  {trade.type}
+                </span>
+                <span className="font-mono text-xs text-neutral-300">
+                  {trade.wallet}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-xs text-white font-medium">
+                  {trade.amountPay.toFixed(4)} {gasSymbol}
+                </span>
+                {trade.explorerUrl ? (
+                  <a
+                    href={trade.explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-mono text-purple-400 hover:text-purple-300 underline"
+                  >
+                    view tx
+                  </a>
+                ) : (
+                  <span className="text-[11px] font-mono text-neutral-500">
+                    {trade.timestamp}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-[#141414] rounded-xl p-6 text-center">
+          <p className="text-xs font-mono text-neutral-400">
+            No trades executed in this session yet. Orders submitted above settle on-chain and appear here with block explorer receipts.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,8 +5,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useWalletBalances } from "@/hooks/use-wallet-balances";
-import { InsufficientBalanceModal } from "@/components/ui/insufficient-balance-modal";
 import { executeOnChainSwap } from "@/lib/trade/dex-swap";
+import { InsufficientBalanceModal } from "@/components/ui/insufficient-balance-modal";
+import type { ExecutedTrade } from "./trade-history";
 
 interface TradeFormProps {
   launch: {
@@ -20,7 +21,7 @@ interface TradeFormProps {
       mint_address: string | null;
     };
   };
-  onTradeSuccess: () => void;
+  onTradeSuccess: (trade?: ExecutedTrade) => void;
 }
 
 export function TradeForm({ launch, onTradeSuccess }: TradeFormProps) {
@@ -126,11 +127,25 @@ export function TradeForm({ launch, onTradeSuccess }: TradeFormProps) {
         throw new Error(data.error || "Failed to finalize swap record");
       }
 
+      const outputVal = parseFloat(payAmount || "0") * (activeTab === "buy" ? exchangeRate : 1 / exchangeRate);
+      const executedTrade: ExecutedTrade = {
+        id: txHash,
+        type: activeTab,
+        amountPay: parseFloat(payAmount),
+        amountReceive: outputVal,
+        wallet: relevantWalletAddress
+          ? `${relevantWalletAddress.substring(0, 4)}...${relevantWalletAddress.substring(relevantWalletAddress.length - 4)}`
+          : "You",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        txHash,
+        explorerUrl: onChainResult.explorerUrl,
+      };
+
       toast.success(
         `Swapped ${payAmount} ${activeTab === "buy" ? gasSymbol : tokenSymbol} (${onChainResult.route})`
       );
       setPayAmount("");
-      onTradeSuccess();
+      onTradeSuccess(executedTrade);
     } catch (err: any) {
       const msg = err.message || "Failed to complete swap";
       if (

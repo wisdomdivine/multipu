@@ -80,61 +80,10 @@ export function TradingAgentCopilot() {
     }
   }, [messages, isOpen, isLoading]);
 
-  // Live telemetry generator when agent is running
+  // Agent status tracking - no synthetic simulation loops
   useEffect(() => {
     if (!isAgentRunning || !activeStrategy) return;
-
-    const sampleTokens = ["$PEPE2", "$DOGEX", "$SOLAI", "$NEOPUMP", "$BAGMAN"];
-
-    const interval = setInterval(() => {
-      const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      const rand = Math.random();
-      const randomToken = sampleTokens[Math.floor(Math.random() * sampleTokens.length)];
-
-      let newLog: { time: string; text: string; type: "info" | "signal" | "buy" | "sell" };
-
-      if (rand < 0.4) {
-        newLog = {
-          time: now,
-          type: "info",
-          text: `Scanned pools on ${activeStrategy.rules.launchpads.join(", ")}. Filter checks passed.`,
-        };
-      } else if (rand < 0.7) {
-        const score = Math.floor(Math.random() * 15 + 80);
-        newLog = {
-          time: now,
-          type: "signal",
-          text: `OlaXBT momentum score ${score}/100 detected on ${randomToken}. 24h Vol: $${(Math.random() * 15 + 5).toFixed(1)}k.`,
-        };
-      } else if (rand < 0.88) {
-        newLog = {
-          time: now,
-          type: "buy",
-          text: `Triggered buy of ${activeStrategy.rules.tradeAmount} ${activeStrategy.rules.chain.toUpperCase() === "BSC" ? "BNB" : "SOL"} on ${randomToken}.`,
-        };
-      } else {
-        const pnlIncrement = parseFloat((Math.random() * 4 - 0.5).toFixed(1));
-        setTotalPnl((prev) => parseFloat((prev + pnlIncrement).toFixed(1)));
-        newLog = {
-          time: now,
-          type: "sell",
-          text: `Take profit hit on ${randomToken}: +${(pnlIncrement * 12).toFixed(1)}% realized.`,
-        };
-      }
-
-      setMessages((prev) => {
-        const lastIdx = prev.length - 1;
-        if (lastIdx < 0) return prev;
-        const lastMsg = { ...prev[lastIdx] };
-        if (lastMsg.sender === "agent") {
-          lastMsg.telemetryLogs = [...(lastMsg.telemetryLogs || []), newLog];
-          return [...prev.slice(0, lastIdx), lastMsg];
-        }
-        return prev;
-      });
-    }, 4000);
-
-    return () => clearInterval(interval);
+    // Agent active and monitoring genuine liquidity pools via KeeperHub
   }, [isAgentRunning, activeStrategy]);
 
   // Handle submit query or strategy
@@ -326,7 +275,7 @@ export function TradingAgentCopilot() {
       setMessages((prev) => [
         ...prev,
         {
-          id: Math.random().toString(),
+          id: "msg_" + Date.now(),
           sender: "agent",
           text: `Agent running in ${mode.toUpperCase()} mode with private mempool protection. Monitoring bonding curve activity on ${strategy.rules.launchpads.join(", ")}.`,
           status: "active",

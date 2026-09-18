@@ -24,6 +24,7 @@ export interface SwapExecutionResult {
   success: boolean;
   txHash: string;
   route: string;
+  explorerUrl?: string;
 }
 
 /**
@@ -84,6 +85,7 @@ export async function executeOnChainSwap(
                   success: true,
                   txHash: txid,
                   route: "Jupiter DEX Aggregator",
+                  explorerUrl: `https://solscan.io/tx/${txid}`,
                 };
               }
             }
@@ -130,6 +132,7 @@ export async function executeOnChainSwap(
       success: true,
       txHash: txid,
       route: "Solana On-Chain Pool",
+      explorerUrl: `https://solscan.io/tx/${txid}`,
     };
   }
 
@@ -154,11 +157,16 @@ export async function executeOnChainSwap(
     });
 
     const receipt = await txResponse.wait(1);
+    const finalHash = receipt?.hash || txResponse.hash;
 
     return {
       success: true,
-      txHash: receipt?.hash || txResponse.hash,
+      txHash: finalHash,
       route: chain === "bsc" ? "BNB Chain Router" : "Robinhood EVM Router",
+      explorerUrl:
+        chain === "bsc"
+          ? `https://bscscan.com/tx/${finalHash}`
+          : `https://explorer.robinhood.com/tx/${finalHash}`,
     };
   }
 

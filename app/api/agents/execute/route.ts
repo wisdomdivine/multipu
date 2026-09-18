@@ -214,8 +214,8 @@ export async function POST(request: Request) {
       txHash = `sim_${chain}_` + Math.random().toString(36).substring(2, 14);
     }
 
-    const pnlPct = action === "sell" ? +(Math.random() * 25 + 10).toFixed(2) : 0;
-    const pnlSol = action === "sell" ? +(amount * (pnlPct / 100)).toFixed(5) : 0;
+    const pnlPct = 0;
+    const pnlSol = 0;
 
     // Record agent and trade in Supabase
     try {
