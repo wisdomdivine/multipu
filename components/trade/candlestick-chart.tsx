@@ -79,7 +79,7 @@ export function CandlestickChart({
 
   const normalizedChain = chainId ? chainId.toLowerCase() : "solana";
 
-  // 1. Initialize chart canvas ONCE on mount
+  // 1. Initialize chart canvas ONCE on mount with compact, zoomed-out scale
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -121,6 +121,9 @@ export function CandlestickChart({
         borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: true,
         secondsVisible: false,
+        barSpacing: 6, // Start zoomed out with slender candles
+        minBarSpacing: 1,
+        rightOffset: 12, // Comfortable breathing room on the right
       },
       rightPriceScale: {
         borderColor: "rgba(255, 255, 255, 0.06)",
@@ -130,7 +133,7 @@ export function CandlestickChart({
         },
       },
       width: container.clientWidth || 800,
-      height: 500,
+      height: 460,
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -185,7 +188,7 @@ export function CandlestickChart({
         if (entry.contentRect && chartRef.current) {
           chartRef.current.applyOptions({
             width: entry.contentRect.width,
-            height: 500,
+            height: 460,
           });
         }
       }
@@ -206,7 +209,7 @@ export function CandlestickChart({
     };
   }, []); // Run once on mount!
 
-  // 2. Fetch OHLCV data with caching and sequence guard
+  // 2. Fetch OHLCV data with memory cache and sequence guard
   const fetchOHLCV = useCallback(async (targetTf: string) => {
     if (!pairAddress) {
       setLoading(false);
@@ -233,6 +236,7 @@ export function CandlestickChart({
 
       const res = await fetch(`/api/launches/${pairAddress}/ohlcv?${query.toString()}`);
       if (!res.ok) {
+        // Do NOT wipe out existing candles on poll failure or 429
         if (seq === fetchSeqRef.current) setLoading(false);
         return;
       }
@@ -242,9 +246,15 @@ export function CandlestickChart({
       // Discard out-of-order responses from earlier toggles
       if (seq !== fetchSeqRef.current) return;
 
-      if (Array.isArray(data?.candles)) {
+      if (Array.isArray(data?.candles) && data.candles.length > 0) {
         cacheRef.current[targetTf] = data.candles;
         setCandles(data.candles);
+      } else if (
+        Array.isArray(data?.candles) &&
+        (!cacheRef.current[targetTf] || cacheRef.current[targetTf].length === 0)
+      ) {
+        // Only set empty if no previous candles exist for this timeframe
+        setCandles([]);
       }
       setLoading(false);
     } catch {
@@ -258,15 +268,15 @@ export function CandlestickChart({
   useEffect(() => {
     fetchOHLCV(timeframe);
 
-    // Active polling every 10 seconds for live ticks
+    // Active polling every 12 seconds for live ticks
     const interval = setInterval(() => {
       fetchOHLCV(timeframe);
-    }, 10000);
+    }, 12000);
 
     return () => clearInterval(interval);
   }, [fetchOHLCV, timeframe]);
 
-  // 3. Update data smoothly in-place whenever candles change
+  // 3. Update data smoothly in-place with zoomed-out initial scale
   useEffect(() => {
     if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
 
@@ -294,7 +304,16 @@ export function CandlestickChart({
     volumeSeriesRef.current.setData(formattedVolumes);
 
     if (chartRef.current) {
-      chartRef.current.timeScale().fitContent();
+      if (formattedCandles.length >= 50) {
+        chartRef.current.timeScale().fitContent();
+      } else {
+        // Keep slender, zoomed-out candles for smaller bar counts
+        chartRef.current.timeScale().applyOptions({
+          barSpacing: 6,
+          rightOffset: 12,
+        });
+        chartRef.current.timeScale().scrollToPosition(8, false);
+      }
     }
   }, [candles]);
 
@@ -383,7 +402,7 @@ export function CandlestickChart({
         </div>
 
         {/* Canvas Chart Area */}
-        <div className="w-full h-[500px] rounded-xl overflow-hidden bg-[#121212] relative">
+        <div className="w-full h-[460px] rounded-xl overflow-hidden bg-[#121212] relative">
           {/* Permanent Chart Container */}
           <div ref={containerRef} className="w-full h-full" />
 

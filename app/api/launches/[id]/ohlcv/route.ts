@@ -1,6 +1,22 @@
 import { apiLimiter } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/auth";
 
+// Server-side in-memory cache to prevent hitting GeckoTerminal rate limits (30 req/min)
+interface CacheEntry {
+  timestamp: number;
+  candles: Array<{
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>;
+}
+
+const ohlcvCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 15000; // 15 seconds fresh cache
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -47,6 +63,19 @@ export async function GET(
 
   if (!poolAddress) {
     return Response.json({ timeframe, candles: [] });
+  }
+
+  const cacheKey = `${network}:${poolAddress}:${timeframe}`;
+  const cached = ohlcvCache.get(cacheKey);
+  const now = Date.now();
+
+  // Return fresh cache if within TTL
+  if (cached && now - cached.timestamp < CACHE_TTL_MS) {
+    return Response.json({
+      timeframe,
+      candles: cached.candles,
+      cached: true,
+    });
   }
 
   // Map requested timeframe to GeckoTerminal parameters
@@ -96,7 +125,15 @@ export async function GET(
     });
 
     if (!res.ok) {
-      return Response.json({ timeframe, candles: [] });
+      // If rate-limited or error, serve stale cache if available
+      if (cached && cached.candles.length > 0) {
+        return Response.json({
+          timeframe,
+          candles: cached.candles,
+          stale: true,
+        });
+      }
+      return Response.json({ error: "Upstream rate limit", candles: [] }, { status: 429 });
     }
 
     const data = await res.json();
@@ -116,11 +153,23 @@ export async function GET(
       }))
       .sort((a, b) => a.time - b.time);
 
+    // Update server cache if candles received
+    if (candles.length > 0) {
+      ohlcvCache.set(cacheKey, { timestamp: now, candles });
+    }
+
     return Response.json({
       timeframe,
       candles,
     });
   } catch (err: any) {
+    if (cached && cached.candles.length > 0) {
+      return Response.json({
+        timeframe,
+        candles: cached.candles,
+        stale: true,
+      });
+    }
     return Response.json({ timeframe, candles: [], error: err?.message || "Failed to fetch OHLCV" });
   }
 }
