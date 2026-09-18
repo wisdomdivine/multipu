@@ -249,46 +249,80 @@ function computeTokenMetrics(p: any, tokenAddr: string) {
           }
         }
       } else {
-        // Fetch wide pool across multiple free endpoints for Solana, BSC, and Robinhood
-        const [topBoostsRes, latestBoostsRes, profilesRes, geckoSolTrending, geckoBscTrending, robinhoodSearchRes] =
-          await Promise.allSettled([
-            fetch("https://api.dexscreener.com/token-boosts/top/v1", { signal: AbortSignal.timeout(4000) }).then((r) => r.json()),
-            fetch("https://api.dexscreener.com/token-boosts/latest/v1", { signal: AbortSignal.timeout(4000) }).then((r) => r.json()),
-            fetch("https://api.dexscreener.com/token-profiles/latest/v1", { signal: AbortSignal.timeout(4000) }).then((r) => r.json()),
-            fetch("https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?page=1", {
-              headers: { Accept: "application/json" },
-              signal: AbortSignal.timeout(4000),
-            }).then((r) => r.json()),
-            fetch("https://api.geckoterminal.com/api/v2/networks/bsc/trending_pools?page=1", {
-              headers: { Accept: "application/json" },
-              signal: AbortSignal.timeout(4000),
-            }).then((r) => r.json()),
-            fetch("https://api.dexscreener.com/latest/dex/search?q=robinhood", { signal: AbortSignal.timeout(4000) }).then((r) => r.json()),
-          ]);
+        // Fetch real-time live pools across Solana, BSC, and multi-chain DEX feeds
+        const [
+          geckoSolNew,
+          geckoBscNew,
+          geckoSolTrending,
+          geckoBscTrending,
+          latestBoostsRes,
+          profilesRes,
+          robinhoodSearchRes,
+        ] = await Promise.allSettled([
+          fetch("https://api.geckoterminal.com/api/v2/networks/solana/new_pools?page=1", {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+          fetch("https://api.geckoterminal.com/api/v2/networks/bsc/new_pools?page=1", {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+          fetch("https://api.geckoterminal.com/api/v2/networks/solana/trending_pools?page=1", {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+          fetch("https://api.geckoterminal.com/api/v2/networks/bsc/trending_pools?page=1", {
+            headers: { Accept: "application/json" },
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+          fetch("https://api.dexscreener.com/token-boosts/latest/v1", {
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+          fetch("https://api.dexscreener.com/token-profiles/latest/v1", {
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+          fetch("https://api.dexscreener.com/latest/dex/search?q=robinhood", {
+            signal: AbortSignal.timeout(4000),
+          }).then((r) => r.json()),
+        ]);
 
-        const topBoostList = topBoostsRes.status === "fulfilled" && Array.isArray(topBoostsRes.value) ? topBoostsRes.value : [];
         const latestBoostList = latestBoostsRes.status === "fulfilled" && Array.isArray(latestBoostsRes.value) ? latestBoostsRes.value : [];
         const profileList = profilesRes.status === "fulfilled" && Array.isArray(profilesRes.value) ? profilesRes.value : [];
 
-        for (const pr of [...profileList, ...topBoostList, ...latestBoostList]) {
+        for (const pr of [...profileList, ...latestBoostList]) {
           if (pr.tokenAddress) {
             profilesMap.set(pr.tokenAddress.toLowerCase(), pr);
           }
         }
 
         const addressSet = new Set<string>();
-        topBoostList.forEach((t: any) => t.tokenAddress && addressSet.add(t.tokenAddress));
+
+        // Helper to extract clean base token address from GeckoTerminal pool data
+        const extractGeckoBaseTokens = (res: any) => {
+          if (res.status === "fulfilled" && Array.isArray(res.value?.data)) {
+            res.value.data.forEach((p: any) => {
+              const baseId = p.relationships?.base_token?.data?.id;
+              if (baseId) {
+                const cleanAddr = baseId.replace(/^[^_]+_/, "");
+                if (cleanAddr && cleanAddr.length > 20) {
+                  addressSet.add(cleanAddr);
+                }
+              }
+            });
+          }
+        };
+
+        // Extract fresh newly minted tokens & trending pools from GeckoTerminal
+        extractGeckoBaseTokens(geckoSolNew);
+        extractGeckoBaseTokens(geckoBscNew);
+        extractGeckoBaseTokens(geckoSolTrending);
+        extractGeckoBaseTokens(geckoBscTrending);
+
+        // Add latest boosted and newly created token profiles from DexScreener
         latestBoostList.forEach((t: any) => t.tokenAddress && addressSet.add(t.tokenAddress));
         profileList.forEach((t: any) => t.tokenAddress && addressSet.add(t.tokenAddress));
 
-        if (geckoSolTrending.status === "fulfilled" && Array.isArray(geckoSolTrending.value?.data)) {
-          geckoSolTrending.value.data.forEach((p: any) => p.attributes?.address && addressSet.add(p.attributes.address));
-        }
-        if (geckoBscTrending.status === "fulfilled" && Array.isArray(geckoBscTrending.value?.data)) {
-          geckoBscTrending.value.data.forEach((p: any) => p.attributes?.address && addressSet.add(p.attributes.address));
-        }
-
-        // Add Robinhood pairs directly
+        // Add active Robinhood pairs directly
         if (robinhoodSearchRes.status === "fulfilled" && Array.isArray(robinhoodSearchRes.value?.pairs)) {
           robinhoodSearchRes.value.pairs.slice(0, 15).forEach((p: any) => {
             if (p.baseToken?.address) addressSet.add(p.baseToken.address);
@@ -410,21 +444,25 @@ function computeTokenMetrics(p: any, tokenAddr: string) {
       );
     }
 
-    // Sort by volume descending
-    deduplicated.sort((a, b) => b.volume_24h - a.volume_24h);
+    // 1. Column "new_pairs": strictly sorted by newest created_at timestamp
+    const nowTime = Date.now();
+    let newPairsTokens = deduplicated
+      .filter((l) => l.category === "new" || nowTime - new Date(l.created_at).getTime() < 172800000)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-    // Dynamic Balanced Partitioning across the 3 columns
-    let finalStretchTokens = deduplicated.filter(
-      (l) => l.category === "final_stretch" || (l.progress >= 50 && l.category !== "migrated")
-    );
-    let migratedTokens = deduplicated.filter(
-      (l) => l.category === "migrated" || l.launchpad === "raydium" || l.launchpad === "uniswap" || l.launchpad === "pancakeswap" || l.launchpad === "sherwood"
-    );
-    let newPairsTokens = deduplicated.filter(
-      (l) => l.category === "new" || l.progress < 50
-    );
+    // Fallback if not enough fresh tokens: take the newest overall
+    if (newPairsTokens.length < 15) {
+      const newestFallback = [...deduplicated].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      newPairsTokens = newestFallback;
+    }
 
-    // Ensure every column has a rich pool of tokens by distributing remaining tokens
+    // 2. Column "final_stretch": sorted by active momentum and 24h volume
+    let finalStretchTokens = deduplicated
+      .filter((l) => l.category === "final_stretch" || (l.progress >= 70 && l.progress < 100))
+      .sort((a, b) => b.volume_24h - a.volume_24h);
+
     if (finalStretchTokens.length < 15) {
       const extras = deduplicated.filter(
         (l) => !finalStretchTokens.some((f) => f.id === l.id) && l.category !== "migrated"
@@ -432,18 +470,23 @@ function computeTokenMetrics(p: any, tokenAddr: string) {
       finalStretchTokens = [...finalStretchTokens, ...extras];
     }
 
+    // 3. Column "migrated": Raydium, Uniswap, PancakeSwap DEX pools sorted by 24h volume
+    let migratedTokens = deduplicated
+      .filter((l) => l.category === "migrated" || l.launchpad === "raydium" || l.launchpad === "uniswap" || l.launchpad === "pancakeswap")
+      .sort((a, b) => b.volume_24h - a.volume_24h);
+
+    if (migratedTokens.length < 15) {
+      const extras = deduplicated
+        .filter((l) => !migratedTokens.some((m) => m.id === l.id))
+        .sort((a, b) => b.volume_24h - a.volume_24h);
+      migratedTokens = [...migratedTokens, ...extras];
+    }
+
     if (newPairsTokens.length < 15) {
       const extras = deduplicated.filter(
         (l) => !newPairsTokens.some((n) => n.id === l.id)
       );
       newPairsTokens = [...newPairsTokens, ...extras];
-    }
-
-    if (migratedTokens.length < 15) {
-      const extras = deduplicated.filter(
-        (l) => !migratedTokens.some((m) => m.id === l.id)
-      );
-      migratedTokens = [...migratedTokens, ...extras];
     }
 
     // Paginate per column
