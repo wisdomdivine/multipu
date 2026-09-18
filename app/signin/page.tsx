@@ -88,32 +88,9 @@ export default function SignInPage() {
               <span>Connect Wallet to Continue</span>
             </button>
           </div>
-
-          {/* Value Badges */}
-          <div className="grid grid-cols-3 gap-3 mt-8 pt-8 border-t border-white/[0.06] text-left">
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <IconShieldCheck size={16} className="text-emerald-400 mb-1.5" />
-              <div className="text-[11px] font-semibold text-white">Non-Custodial</div>
-              <div className="text-[10px] text-neutral-500 mt-0.5">Self-sovereign keys</div>
-            </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <IconCpu size={16} className="text-accent mb-1.5" />
-              <div className="text-[11px] font-semibold text-white">KeeperHub Shield</div>
-              <div className="text-[10px] text-neutral-500 mt-0.5">MEV frontrun guard</div>
-            </div>
-            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-              <IconSparkles size={16} className="text-[#14F195] mb-1.5" />
-              <div className="text-[11px] font-semibold text-white">Multi-Chain</div>
-              <div className="text-[10px] text-neutral-500 mt-0.5">Solana, BSC & RH</div>
-            </div>
-          </div>
         </motion.div>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 w-full max-w-6xl mx-auto px-6 py-6 text-center text-xs text-neutral-500 font-mono">
-        Multipu Autonomous Trading Engine • Live Mainnet
-      </footer>
 
       {/* Sign In Modal */}
       <SignInModal
