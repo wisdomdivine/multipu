@@ -49,11 +49,16 @@ export function TradeHistory({
         if (network) query.set("network", network);
 
         const res = await fetch(`/api/launches/${launchId}/trades?${query.toString()}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (isSubscribed) setLoading(false);
+          return;
+        }
 
         const data = await res.json();
-        if (isSubscribed && Array.isArray(data?.trades)) {
-          setLiveTrades(data.trades);
+        if (isSubscribed) {
+          if (Array.isArray(data?.trades) && data.trades.length > 0) {
+            setLiveTrades(data.trades);
+          }
           setLoading(false);
         }
       } catch {
@@ -62,8 +67,8 @@ export function TradeHistory({
     };
 
     fetchLiveTrades();
-    // Poll every 8 seconds for real-time transaction updates
-    const pollInterval = setInterval(fetchLiveTrades, 8000);
+    // Poll every 12 seconds for real-time transaction updates
+    const pollInterval = setInterval(fetchLiveTrades, 12000);
 
     return () => {
       isSubscribed = false;
