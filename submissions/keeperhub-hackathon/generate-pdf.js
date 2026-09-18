@@ -414,42 +414,41 @@ const htmlContent = `<!DOCTYPE html>
   </div>
 
   <!-- Section 4: Video Script -->
-  <h2 style="page-break-before: always; margin-top: 0;"><span class="section-num">4</span> 2-Minute Demo Video Script</h2>
-
+  <h2 style="page-break-before: always; margin-top: 0;"><span class="section-num">4</span> 90-Second Winning Demo Video Script (Live Actions for Absolute Trust)</h2>
 
   <table>
     <thead>
       <tr>
         <th style="width: 14%;">Time</th>
-        <th style="width: 36%;">Screen Display</th>
+        <th style="width: 36%;">Screen &amp; Live Mouse Action</th>
         <th style="width: 50%;">Narration / Voiceover Script</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td><strong>0:00 – 0:25</strong></td>
-        <td>Open <code>https://multipu.fun</code> (Landing &amp; Multi-chain UI)</td>
-        <td>"This is Multipu, a live multi-chain launchpad and DEX terminal across Solana, BNB Chain, and Robinhood. When autonomous AI agents trade on-chain, probabilistic LLMs suffer from slippage re-interpretation and public mempool sandwich attacks. KeeperHub solves this."</td>
+        <td><strong>0:00 – 0:20</strong></td>
+        <td>Open <code>https://multipu.fun/dashboard/explore</code><br>Scroll briefly across live tokens and 24h order flow.</td>
+        <td>"This is Multipu, a live multi-chain token launch orchestrator and DEX terminal. In the burgeoning Agent Economy, the biggest vulnerability autonomous AI agents face is execution risk: probabilistic agents trading on public mempools constantly get sandwiched, frontrun, and suffer slippage shock. Here is how our integration with KeeperHub eliminates that entirely."</td>
       </tr>
       <tr>
-        <td><strong>0:25 – 0:55</strong></td>
-        <td>Open <code>/dashboard</code> &amp; click purple <strong>Multipu AI Copilot</strong></td>
-        <td>"Inside the Multipu terminal, we open the Copilot. We type a natural language strategy: 'Scalp fresh Pump.fun memes with >$5k volume and OlaXBT momentum >80, 0.2 SOL per trade with MEV protection.' The strategy compiles into deterministic rules in milliseconds."</td>
+        <td><strong>0:20 – 0:45</strong></td>
+        <td>Click purple <strong>Multipu AI</strong> button &rarr; select <strong>Pump.fun Momentum</strong>.<br>Show compiled rules checklist.</td>
+        <td>"Inside the terminal, we open the Multipu AI Copilot. When an agent spots market momentum, it formulates trading intent. But instead of blasting raw transactions into public mempools, Multipu compiles the strategy into deterministic KeeperHub workflow definitions with MEV protection enabled."</td>
       </tr>
       <tr>
-        <td><strong>0:55 – 1:30</strong></td>
-        <td>Click <strong>Paper Trade</strong> or <strong>Deploy Live</strong></td>
-        <td>"Watch KeeperHub in action. Before sending value, KeeperHub performs an off-chain deterministic dry-run. It calculates gas at 0.000005 SOL, verifies zero sandwich risk, and assigns a LOW MEV risk score. Once confirmed, it routes the swap through KeeperHub's private mempool shield."</td>
+        <td><strong>0:45 – 1:05</strong></td>
+        <td><strong>LIVE ACTION:</strong> Click <strong>Paper Trade</strong> (or <strong>Deploy Live</strong>).<br>Watch toast and logs stream in &lt;400ms.</td>
+        <td>"Watch this live: I click 'Paper Trade'. In milliseconds, KeeperHub performs an off-chain deterministic dry-run, estimates gas at 0.000005 SOL, and confirms zero sandwich vulnerability. The order executes instantly through KeeperHub's private mempool shield in 350 milliseconds."</td>
       </tr>
       <tr>
-        <td><strong>1:30 – 1:55</strong></td>
-        <td>Show Execution Log &amp; Click Audit URL</td>
-        <td>"The trade executes with 350ms latency. The receipt links directly to an immutable KeeperHub audit URL with full nonce management and execution digest. Zero frontrunning, 100% deterministic."</td>
+        <td><strong>1:05 – 1:25</strong></td>
+        <td><strong>LIVE CLICKS:</strong><br>1. Click <strong>Open KeeperHub Audit Record</strong> &rarr; opens live audit JSON tab.<br>2. Click <strong>Open Solana Explorer</strong> &rarr; opens verified tx tab.</td>
+        <td>"Notice what appears on screen: a verified execution receipt. Let's click 'Open KeeperHub Audit Record'. Live in our browser, we see the full cryptographic audit digest, LOW sandwich risk certification, and private routing trace. Next, we click 'Open Solana Explorer'—and there is the verified on-chain proof on the Solana blockchain. Zero doctoring, 100% auditable."</td>
       </tr>
       <tr>
-        <td><strong>1:55 – 2:10</strong></td>
-        <td>Show GitHub repository (<code>lib/keeperhub/client.ts</code>)</td>
-        <td>"Under the hood, our client at <code>lib/keeperhub/client.ts</code> exposes deterministic workflow execution and dry-runs to both the UI and our <code>@multipu/keeperhub-mcp</code> server. Thank you!"</td>
+        <td><strong>1:25 – 1:40</strong></td>
+        <td>Briefly show <code>lib/keeperhub/client.ts</code> or <code>/api/health</code>.<br>Highlight MCP server.</td>
+        <td>"Under the hood, our client at <code>lib/keeperhub/client.ts</code> powers both our web terminal and our <code>@multipu/keeperhub-mcp</code> tools, allowing external LLM agents in Cursor or Claude to execute protected workflows autonomously. Multipu plus KeeperHub makes autonomous DeFi safe, deterministic, and production-ready."</td>
       </tr>
     </tbody>
   </table>
