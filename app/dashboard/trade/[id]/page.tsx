@@ -215,6 +215,8 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
           <TradeHistory
             launchId={launch.id}
             gasSymbol={gasSymbol}
+            pairAddress={pairAddress}
+            network={rawNetwork}
             sessionTrades={sessionTrades}
             txns24h={launch.txns_24h}
           />
