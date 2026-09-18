@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   createChart,
   CandlestickSeries,
@@ -67,6 +67,11 @@ export function CandlestickChart({
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
+  // Cache previously fetched timeframes so switching is instantaneous
+  const cacheRef = useRef<Record<string, CandleData[]>>({});
+  // Sequence counter to discard out-of-order responses on rapid toggles
+  const fetchSeqRef = useRef<number>(0);
+
   const [timeframe, setTimeframe] = useState("1h");
   const [loading, setLoading] = useState(true);
   const [candles, setCandles] = useState<CandleData[]>([]);
@@ -74,65 +79,17 @@ export function CandlestickChart({
 
   const normalizedChain = chainId ? chainId.toLowerCase() : "solana";
 
-  // Fetch OHLCV candles
+  // 1. Initialize chart canvas ONCE on mount
   useEffect(() => {
-    if (!pairAddress) {
-      setLoading(false);
-      setCandles([]);
-      return;
-    }
-
-    let isSubscribed = true;
-    setLoading(true);
-
-    const fetchOHLCV = async () => {
-      try {
-        const query = new URLSearchParams({
-          timeframe,
-          pairAddress,
-          network: normalizedChain,
-        });
-
-        const res = await fetch(`/api/launches/${pairAddress}/ohlcv?${query.toString()}`);
-        if (!res.ok) {
-          if (isSubscribed) setLoading(false);
-          return;
-        }
-
-        const data = await res.json();
-        if (isSubscribed) {
-          if (Array.isArray(data?.candles)) {
-            setCandles(data.candles);
-          }
-          setLoading(false);
-        }
-      } catch {
-        if (isSubscribed) setLoading(false);
-      }
-    };
-
-    fetchOHLCV();
-    // Poll every 10 seconds for live active market updates
-    const pollInterval = setInterval(fetchOHLCV, 10000);
-
-    return () => {
-      isSubscribed = false;
-      clearInterval(pollInterval);
-    };
-  }, [pairAddress, normalizedChain, timeframe]);
-
-  // Mount Lightweight Charts canvas once per timeframe/mount
-  useEffect(() => {
-    initialFittedRef.current = false;
     if (!containerRef.current) return;
 
-    // Clean up previous chart instance
+    const container = containerRef.current;
+
+    // Remove any stale chart instances
     if (chartRef.current) {
       chartRef.current.remove();
       chartRef.current = null;
     }
-
-    const container = containerRef.current;
 
     const chart = createChart(container, {
       layout: {
@@ -203,7 +160,7 @@ export function CandlestickChart({
       },
     });
 
-    // Hover crosshair tracking
+    // Crosshair hover listener
     chart.subscribeCrosshairMove((param) => {
       if (!param.point || !param.time || param.point.x < 0 || param.point.y < 0) {
         setHoverData(null);
@@ -247,13 +204,77 @@ export function CandlestickChart({
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
     };
-  }, [timeframe]);
+  }, []); // Run once on mount!
 
-  // Seamless in-place updates when candles arrive
-  const initialFittedRef = useRef(false);
+  // 2. Fetch OHLCV data with caching and sequence guard
+  const fetchOHLCV = useCallback(async (targetTf: string) => {
+    if (!pairAddress) {
+      setLoading(false);
+      setCandles([]);
+      return;
+    }
 
+    const seq = ++fetchSeqRef.current;
+
+    // If cached in memory, show immediately for 0ms toggle lag
+    if (cacheRef.current[targetTf] && cacheRef.current[targetTf].length > 0) {
+      setCandles(cacheRef.current[targetTf]);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const query = new URLSearchParams({
+        timeframe: targetTf,
+        pairAddress,
+        network: normalizedChain,
+      });
+
+      const res = await fetch(`/api/launches/${pairAddress}/ohlcv?${query.toString()}`);
+      if (!res.ok) {
+        if (seq === fetchSeqRef.current) setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+
+      // Discard out-of-order responses from earlier toggles
+      if (seq !== fetchSeqRef.current) return;
+
+      if (Array.isArray(data?.candles)) {
+        cacheRef.current[targetTf] = data.candles;
+        setCandles(data.candles);
+      }
+      setLoading(false);
+    } catch {
+      if (seq === fetchSeqRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [pairAddress, normalizedChain]);
+
+  // Fetch when pairAddress, chainId or timeframe changes
   useEffect(() => {
-    if (!candleSeriesRef.current || !volumeSeriesRef.current || candles.length === 0) return;
+    fetchOHLCV(timeframe);
+
+    // Active polling every 10 seconds for live ticks
+    const interval = setInterval(() => {
+      fetchOHLCV(timeframe);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [fetchOHLCV, timeframe]);
+
+  // 3. Update data smoothly in-place whenever candles change
+  useEffect(() => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+
+    if (candles.length === 0) {
+      candleSeriesRef.current.setData([]);
+      volumeSeriesRef.current.setData([]);
+      return;
+    }
 
     const formattedCandles = candles.map((c) => ({
       time: c.time as UTCTimestamp,
@@ -272,13 +293,12 @@ export function CandlestickChart({
     candleSeriesRef.current.setData(formattedCandles);
     volumeSeriesRef.current.setData(formattedVolumes);
 
-    if (!initialFittedRef.current && chartRef.current) {
+    if (chartRef.current) {
       chartRef.current.timeScale().fitContent();
-      initialFittedRef.current = true;
     }
   }, [candles]);
 
-  // Real-time tick update if currentPrice moves
+  // 4. Update last candle in real-time when currentPrice moves
   useEffect(() => {
     if (!candleSeriesRef.current || candles.length === 0 || currentPrice <= 0) return;
 
