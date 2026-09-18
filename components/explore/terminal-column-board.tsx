@@ -333,7 +333,7 @@ export function TerminalColumnBoard({
                         )}
 
                         <Link
-                          href={`/dashboard/trade/${item.id}`}
+                          href={`/dashboard/trade/${item.id}?fromPage=${currentPage}`}
                           className="px-4 py-1.5 text-xs font-sans font-semibold text-black bg-white hover:bg-neutral-200 rounded-full transition-colors"
                         >
                           Trade

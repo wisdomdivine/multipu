@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconSearch, IconRefresh } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { TerminalColumnBoard } from "@/components/explore/terminal-column-board";
@@ -15,12 +15,14 @@ export default function ExplorePage() {
   const [page, setPage] = useState<number>(1);
   const [error, setError] = useState<string | null>(null);
 
+  const isFirstMount = useRef(true);
+
   // Quick Buy Modal state
   const [modalToken, setModalToken] = useState<any>(null);
   const [modalAmount, setModalAmount] = useState<number>(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchExploreData = async (query = "", chain = activeChain, pageNum = page, showSpinner = true) => {
+  const fetchExploreData = async (query = search, chain = activeChain, pageNum = page, showSpinner = true) => {
     if (showSpinner) setLoading(true);
     setIsRefreshing(true);
     try {
@@ -45,23 +47,91 @@ export default function ExplorePage() {
     }
   };
 
+  // Restore pagination, chain, and search from URL or sessionStorage on mount
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPage = parseInt(urlParams.get("page") || "", 10);
+    const savedPage = parseInt(sessionStorage.getItem("explore_page") || "", 10);
+    const targetPage = !isNaN(urlPage) && urlPage > 0 ? urlPage : (!isNaN(savedPage) && savedPage > 0 ? savedPage : 1);
+
+    const urlChain = urlParams.get("chain") || "all";
+    const urlSearch = urlParams.get("q") || "";
+
+    if (targetPage !== 1) setPage(targetPage);
+    if (urlChain !== "all") setActiveChain(urlChain);
+    if (urlSearch) setSearch(urlSearch);
+
+    fetchExploreData(urlSearch, urlChain, targetPage);
+    isFirstMount.current = false;
+  }, []);
+
+  // Subsequent updates on activeChain or page change
+  useEffect(() => {
+    if (isFirstMount.current) return;
     fetchExploreData(search, activeChain, page);
   }, [activeChain, page]);
+
+  // Synchronize browser history and popstate for back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const p = parseInt(urlParams.get("page") || "1", 10);
+      const newPage = !isNaN(p) && p > 0 ? p : 1;
+      const c = urlParams.get("chain") || "all";
+      const q = urlParams.get("q") || "";
+
+      setPage(newPage);
+      setActiveChain(c);
+      setSearch(q);
+      sessionStorage.setItem("explore_page", String(newPage));
+      fetchExploreData(q, c, newPage, false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
     setPage(1);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("explore_page", "1");
+      const url = new URL(window.location.href);
+      if (val) url.searchParams.set("q", val);
+      else url.searchParams.delete("q");
+      url.searchParams.delete("page");
+      window.history.replaceState(null, "", url.toString());
+    }
     fetchExploreData(val, activeChain, 1, false);
   };
 
   const handleChainChange = (chain: string) => {
     setActiveChain(chain);
     setPage(1);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("explore_page", "1");
+      const url = new URL(window.location.href);
+      if (chain !== "all") url.searchParams.set("chain", chain);
+      else url.searchParams.delete("chain");
+      url.searchParams.delete("page");
+      window.history.pushState(null, "", url.toString());
+    }
   };
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("explore_page", String(newPage));
+      const url = new URL(window.location.href);
+      if (newPage > 1) {
+        url.searchParams.set("page", String(newPage));
+      } else {
+        url.searchParams.delete("page");
+      }
+      window.history.pushState(null, "", url.toString());
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

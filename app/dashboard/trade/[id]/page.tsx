@@ -80,6 +80,21 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
     }
   };
 
+  const handleBackToExplore = () => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const fromPage = urlParams.get("fromPage") || sessionStorage.getItem("explore_page");
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.location.href =
+          fromPage && fromPage !== "1"
+            ? `/dashboard/explore?page=${fromPage}`
+            : "/dashboard/explore";
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 md:p-10 max-w-[1400px] mx-auto flex items-center justify-center min-h-[50vh]">
@@ -94,12 +109,12 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
         <div className="text-xs text-red-400 font-mono bg-[#181818] p-5 rounded-2xl">
           {error || "Launch details not found."}
         </div>
-        <Link
-          href="/dashboard/explore"
-          className="text-xs text-white hover:text-neutral-300 font-sans flex items-center gap-1.5"
+        <button
+          onClick={handleBackToExplore}
+          className="text-xs text-white hover:text-neutral-300 font-sans flex items-center gap-1.5 cursor-pointer"
         >
           <IconArrowLeft size={14} /> Back to Trade &amp; Explore
-        </Link>
+        </button>
       </div>
     );
   }
@@ -115,13 +130,13 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
     <div className="p-6 md:p-10 max-w-[1400px] mx-auto flex flex-col gap-6">
       {/* Navigation Toolbar */}
       <div className="flex items-center justify-between">
-        <Link
-          href="/dashboard/explore"
-          className="text-xs text-neutral-400 hover:text-white bg-[#181818] hover:bg-white/[0.06] px-3.5 py-1.5 rounded-full transition-colors font-sans flex items-center gap-1.5"
+        <button
+          onClick={handleBackToExplore}
+          className="text-xs text-neutral-400 hover:text-white bg-[#181818] hover:bg-white/[0.06] px-3.5 py-1.5 rounded-full transition-colors font-sans flex items-center gap-1.5 cursor-pointer"
         >
           <IconArrowLeft size={14} />
           <span>Back to Explore</span>
-        </Link>
+        </button>
         <button
           onClick={fetchDetails}
           className="text-xs text-neutral-400 hover:text-white bg-[#181818] hover:bg-white/[0.06] px-3.5 py-1.5 rounded-full transition-colors font-sans flex items-center gap-1.5 cursor-pointer"
