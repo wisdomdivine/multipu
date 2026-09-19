@@ -4,7 +4,7 @@ export async function GET() {
       name: "Multipu API",
       version: "1.0.0",
       description:
-        "Autonomous multi-chain token launch aggregator and execution layer for AI agents",
+        "Multipu is an autonomous decentralized execution engine that aggregates top launchpads like Pump.fun, Pons, and Meteora across Solana, BNB, and Robinhood to automate liquidity deployment, trade, and unify cross-chain creator earnings. It features an embedded copilot, Multipu AI, which uses OLAXbt telemetry and the X-Agent framework to turn a single prompt into an autonomous trading and arbitrage agent.",
       documentation: "https://www.multipu.fun",
       endpoints: {
         health: "/api/health",
