@@ -1,7 +1,7 @@
 const GIT_COMMIT =
   process.env.VERCEL_GIT_COMMIT_SHA ||
   process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ||
-  "7a2146dc5ddda5c647b7b7d9c21a874efe7c2415";
+  "c2a44bedd75a16f91da6e7a07787aec8340f40bb";
 
 export async function GET() {
   return Response.json(
