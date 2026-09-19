@@ -55,7 +55,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "gateway.pinata.cloud" },
       { protocol: "https", hostname: "cf-ipfs.com" },
       { protocol: "https", hostname: "pump.fun" },
-      { protocol: "https", hostname: "**" },
+      { protocol: "https", hostname: "api.dicebear.com" },
+      { protocol: "https", hostname: "images.unsplash.com" },
     ],
   },
 

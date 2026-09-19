@@ -156,17 +156,21 @@ ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE treasury_transfers ENABLE ROW LEVEL SECURITY;
 
--- Users: can only read own profile
-CREATE POLICY users_own ON users FOR ALL USING (true) WITH CHECK (true);
+-- Users & Earnings: restricted to server service-role
+CREATE POLICY users_locked ON users FOR ALL USING (false) WITH CHECK (false);
+CREATE POLICY earnings_locked ON earnings FOR ALL USING (false) WITH CHECK (false);
 
--- Tokens: users can only see/modify their own tokens
-CREATE POLICY tokens_own ON tokens FOR ALL USING (true) WITH CHECK (true);
+-- Tokens & Launches: public read-only, mutations restricted to service-role
+CREATE POLICY tokens_read ON tokens FOR SELECT USING (true);
+CREATE POLICY tokens_lock ON tokens FOR INSERT WITH CHECK (false);
+CREATE POLICY tokens_update_lock ON tokens FOR UPDATE USING (false) WITH CHECK (false);
+CREATE POLICY tokens_delete_lock ON tokens FOR DELETE USING (false);
 
--- Launches: users can only see/modify their own launches
-CREATE POLICY launches_own ON launches FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY launches_read ON launches FOR SELECT USING (true);
+CREATE POLICY launches_lock ON launches FOR INSERT WITH CHECK (false);
+CREATE POLICY launches_update_lock ON launches FOR UPDATE USING (false) WITH CHECK (false);
+CREATE POLICY launches_delete_lock ON launches FOR DELETE USING (false);
 
--- Earnings: users can only see their own earnings
-CREATE POLICY earnings_own ON earnings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY admin_settings_locked ON admin_settings FOR ALL USING (false) WITH CHECK (false);
 CREATE POLICY admin_audit_logs_locked ON admin_audit_logs FOR ALL USING (false) WITH CHECK (false);
 CREATE POLICY treasury_transfers_locked ON treasury_transfers FOR ALL USING (false) WITH CHECK (false);
@@ -245,8 +249,7 @@ CREATE INDEX idx_developer_api_keys_wallet ON developer_api_keys (wallet_address
 CREATE INDEX idx_developer_api_keys_key ON developer_api_keys (api_key);
 
 ALTER TABLE developer_api_keys ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY developer_api_keys_own ON developer_api_keys FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY developer_api_keys_locked ON developer_api_keys FOR ALL USING (false) WITH CHECK (false);
 
 -- ─── Developer Wallets ──────────────────────────────
 CREATE TABLE developer_wallets (
@@ -264,5 +267,5 @@ CREATE TABLE developer_wallets (
 CREATE INDEX idx_developer_wallets_wallet ON developer_wallets (wallet_address);
 
 ALTER TABLE developer_wallets ENABLE ROW LEVEL SECURITY;
-CREATE POLICY developer_wallets_own ON developer_wallets FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY developer_wallets_locked ON developer_wallets FOR ALL USING (false) WITH CHECK (false);
 

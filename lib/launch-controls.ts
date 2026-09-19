@@ -63,12 +63,28 @@ function normalizeLaunchControls(value: unknown): LaunchControls {
  * Used by launch creation route to enforce platform pause, whitelist, and adapter toggles.
  */
 export async function getLaunchControls(): Promise<LaunchControls> {
-  const supabase = createAdminSupabase();
-  const { data } = await supabase
-    .from("admin_settings")
-    .select("value")
-    .eq("key", "launch_controls")
-    .maybeSingle();
+  try {
+    const supabase = createAdminSupabase();
+    const { data, error } = await supabase
+      .from("admin_settings")
+      .select("value")
+      .eq("key", "launch_controls")
+      .maybeSingle();
 
-  return normalizeLaunchControls(data?.value);
+    if (error) {
+      console.error("[launch-controls] Query failed, failing closed:", error);
+      return {
+        ...DEFAULT_LAUNCH_CONTROLS,
+        launchesPaused: true,
+      };
+    }
+
+    return normalizeLaunchControls(data?.value);
+  } catch (err) {
+    console.error("[launch-controls] Failed to read launch controls, failing closed:", err);
+    return {
+      ...DEFAULT_LAUNCH_CONTROLS,
+      launchesPaused: true,
+    };
+  }
 }

@@ -97,77 +97,15 @@ export async function executeOnChainSwap(
     }
 
     // 2. Direct on-chain pool interaction (Bonding Curve / Liquidity Pool)
-    let recipientPubkey: PublicKey;
-    try {
-      recipientPubkey = poolAddress && poolAddress.length > 30
-        ? new PublicKey(poolAddress)
-        : targetMint
-        ? new PublicKey(targetMint)
-        : solanaPublicKey;
-    } catch {
-      recipientPubkey = solanaPublicKey;
-    }
-
-    const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
-    const tx = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: solanaPublicKey,
-        toPubkey: recipientPubkey,
-        lamports,
-      })
+    throw new Error(
+      "No automated DEX liquidity route currently available for this pair on Solana. Ensure the token has migrated or active liquidity is seeded."
     );
-
-    const { blockhash } = await solanaConnection.getLatestBlockhash("confirmed");
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = solanaPublicKey;
-
-    const signed = await solanaSignTransaction(tx);
-    const rawTx = signed.serialize();
-    const txid = await solanaConnection.sendRawTransaction(rawTx, {
-      skipPreflight: false,
-    });
-    await solanaConnection.confirmTransaction(txid, "confirmed");
-
-    return {
-      success: true,
-      txHash: txid,
-      route: "Solana On-Chain Pool",
-      explorerUrl: `https://solscan.io/tx/${txid}`,
-    };
   }
 
   if (chain === "bsc" || chain === "robinhood") {
-    if (typeof window === "undefined" || !(window as any).ethereum) {
-      throw new Error("EVM wallet (MetaMask) required for on-chain execution");
-    }
-
-    const provider = new ethers.BrowserProvider((window as any).ethereum);
-    const signer = await provider.getSigner();
-
-    const targetAddr = poolAddress && ethers.isAddress(poolAddress)
-      ? poolAddress
-      : tokenMint && ethers.isAddress(tokenMint)
-      ? tokenMint
-      : await signer.getAddress();
-
-    const wei = ethers.parseEther(amount.toString());
-    const txResponse = await signer.sendTransaction({
-      to: targetAddr,
-      value: wei,
-    });
-
-    const receipt = await txResponse.wait(1);
-    const finalHash = receipt?.hash || txResponse.hash;
-
-    return {
-      success: true,
-      txHash: finalHash,
-      route: chain === "bsc" ? "BNB Chain Router" : "Robinhood EVM Router",
-      explorerUrl:
-        chain === "bsc"
-          ? `https://bscscan.com/tx/${finalHash}`
-          : `https://explorer.robinhood.com/tx/${finalHash}`,
-    };
+    throw new Error(
+      `Direct contract swaps on ${chain} are restricted to verified router contracts. Automated execution via client is currently in read-only mode.`
+    );
   }
 
   throw new Error(`Unsupported chain for direct swap: ${chain}`);

@@ -27,11 +27,13 @@ export async function verifyMintConfirmationOnChain(params: {
   mintAddress: string;
   signature: string;
 }) {
+  const isDevSandbox = process.env.NODE_ENV !== "production";
   if (
-    params.signature.startsWith("mock-") ||
-    params.signature.startsWith("sim_") ||
-    params.mintAddress.startsWith("mock-") ||
-    params.walletAddress.toLowerCase().includes("demo")
+    isDevSandbox &&
+    (params.signature.startsWith("mock-") ||
+      params.signature.startsWith("sim_") ||
+      params.mintAddress.startsWith("mock-") ||
+      params.walletAddress.toLowerCase().includes("demo"))
   ) {
     return;
   }
@@ -67,11 +69,13 @@ export async function verifyLaunchConfirmationOnChain(params: {
   walletAddress: string;
   signature: string;
 }) {
+  const isDevSandbox = process.env.NODE_ENV !== "production";
   if (
-    params.signature.startsWith("mock-") ||
-    params.signature.startsWith("sim_") ||
-    params.signature.startsWith("0xmock") ||
-    params.walletAddress.toLowerCase().includes("demo")
+    isDevSandbox &&
+    (params.signature.startsWith("mock-") ||
+      params.signature.startsWith("sim_") ||
+      params.signature.startsWith("0xmock") ||
+      params.walletAddress.toLowerCase().includes("demo"))
   ) {
     return;
   }

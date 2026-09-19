@@ -16,10 +16,19 @@ export interface SessionData {
  * The cookie is encrypted + signed, httpOnly, secure, SameSite=Lax.
  * No JS can read it. No DB needed per request. Revocable via version counter.
  */
+function getSessionSecret(): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("CRITICAL: SESSION_SECRET is not configured in production environment.");
+    }
+    return "dev_mode_only_session_secret_min_32_characters_long";
+  }
+  return secret;
+}
+
 export const sessionOptions: SessionOptions = {
-  password:
-    process.env.SESSION_SECRET ||
-    "complex_password_at_least_32_characters_long_for_dev_only",
+  password: getSessionSecret(),
   cookieName: "multipu_session",
   cookieOptions: {
     httpOnly: true,

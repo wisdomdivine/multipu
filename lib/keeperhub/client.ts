@@ -86,6 +86,7 @@ export async function dryRunWorkflow(
 export async function executeKeeperHubWorkflow(
   params: KeeperHubWorkflowParams
 ): Promise<KeeperHubExecutionResult> {
+  const executionId = "kh_exec_" + Math.random().toString(36).substring(2, 12);
   try {
     const res = await fetch(`${KEEPERHUB_API_URL}/workflows/execute`, {
       method: "POST",
@@ -102,21 +103,39 @@ export async function executeKeeperHubWorkflow(
       const data = await res.json();
       return data;
     }
+
+    return {
+      executionId,
+      txHash: "",
+      status: "failed",
+      chain: params.chain,
+      executionLatencyMs: 0,
+      auditRecordUrl: `https://www.multipu.fun/api/keeperhub/audit/${executionId}`,
+      gasSpentFormatted: "0",
+    };
   } catch {
-    // Fallback to local verified execution format
+    if (process.env.NODE_ENV === "production") {
+      return {
+        executionId,
+        txHash: "",
+        status: "failed",
+        chain: params.chain,
+        executionLatencyMs: 0,
+        auditRecordUrl: `https://www.multipu.fun/api/keeperhub/audit/${executionId}`,
+        gasSpentFormatted: "0",
+      };
+    }
+
+    const txPrefix = params.chain === "solana" ? "5" : "0x";
+    const simHash = txPrefix + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+    return {
+      executionId,
+      txHash: simHash,
+      status: "pending",
+      chain: params.chain,
+      executionLatencyMs: 420,
+      auditRecordUrl: `https://www.multipu.fun/api/keeperhub/audit/${executionId}`,
+      gasSpentFormatted: params.chain === "solana" ? "0.000005 SOL" : "0.00018 BNB",
+    };
   }
-
-  const txPrefix = params.chain === "solana" ? "5" : "0x";
-  const randomHash = txPrefix + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
-  const executionId = "kh_exec_" + Math.random().toString(36).substring(2, 12);
-
-  return {
-    executionId,
-    txHash: randomHash,
-    status: "confirmed",
-    chain: params.chain,
-    executionLatencyMs: 420,
-    auditRecordUrl: `https://www.multipu.fun/api/keeperhub/audit/${executionId}`,
-    gasSpentFormatted: params.chain === "solana" ? "0.000005 SOL" : "0.00018 BNB",
-  };
 }

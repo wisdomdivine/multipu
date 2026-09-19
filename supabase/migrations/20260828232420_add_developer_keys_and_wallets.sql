@@ -13,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_developer_api_keys_wallet ON developer_api_keys (
 CREATE INDEX IF NOT EXISTS idx_developer_api_keys_key ON developer_api_keys (api_key);
 
 ALTER TABLE developer_api_keys ENABLE ROW LEVEL SECURITY;
-CREATE POLICY developer_api_keys_own ON developer_api_keys FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY developer_api_keys_locked ON developer_api_keys FOR ALL USING (false) WITH CHECK (false);
 
 -- ─── Developer Wallets ──────────────────────────────
 CREATE TABLE IF NOT EXISTS developer_wallets (
@@ -31,4 +31,4 @@ CREATE TABLE IF NOT EXISTS developer_wallets (
 CREATE INDEX IF NOT EXISTS idx_developer_wallets_wallet ON developer_wallets (wallet_address);
 
 ALTER TABLE developer_wallets ENABLE ROW LEVEL SECURITY;
-CREATE POLICY developer_wallets_own ON developer_wallets FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY developer_wallets_locked ON developer_wallets FOR ALL USING (false) WITH CHECK (false);

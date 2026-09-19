@@ -40,12 +40,15 @@ export async function createServerSupabase() {
 export function createAdminSupabase() {
   const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    process.env.SUPABASE_SERVICE_KEY;
+
+  if (!serviceKey) {
+    throw new Error("CRITICAL: SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY is required for admin database operations.");
+  }
 
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey!,
+    serviceKey,
     { auth: { persistSession: false } }
   );
 }

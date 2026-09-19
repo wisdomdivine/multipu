@@ -49,12 +49,14 @@ export async function verifyEvmLaunchTransaction(params: {
   walletAddress: string;
   txHash: string;
 }) {
+  const isSandbox = process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_APP_PHASE !== "mainnet";
   if (
-    params.txHash.startsWith("mock-") ||
-    params.txHash.startsWith("sim_") ||
-    params.txHash.startsWith("0xmock") ||
-    params.walletAddress.toLowerCase().includes("demo") ||
-    params.network === "robinhood" // Robinhood sandbox mode per architecture
+    isSandbox &&
+    (params.txHash.startsWith("mock-") ||
+      params.txHash.startsWith("sim_") ||
+      params.txHash.startsWith("0xmock") ||
+      params.walletAddress.toLowerCase().includes("demo") ||
+      params.network === "robinhood")
   ) {
     return;
   }

@@ -36,7 +36,7 @@ export const LAUNCHPAD_META = [
     image: "/meteora.png",
     estimatedFee: "~0.5 SOL",
     network: "Solana",
-    ready: true,
+    ready: false,
   },
   {
     id: "bags" as const,
@@ -45,7 +45,7 @@ export const LAUNCHPAD_META = [
     image: "/bags.png",
     estimatedFee: "~0.3 SOL",
     network: "Solana",
-    ready: true,
+    ready: false,
   },
   {
     id: "pumpfun" as const,
@@ -54,7 +54,7 @@ export const LAUNCHPAD_META = [
     image: "/pumpfun.png",
     estimatedFee: "~0.02 SOL",
     network: "Solana",
-    ready: true,
+    ready: false,
   },
   {
     id: "fourmeme" as const,
@@ -63,7 +63,7 @@ export const LAUNCHPAD_META = [
     image: "/four-meme.png",
     estimatedFee: "~0.005 BNB",
     network: "BNB Smart Chain",
-    ready: true,
+    ready: false,
   },
   {
     id: "pons" as const,
@@ -72,7 +72,7 @@ export const LAUNCHPAD_META = [
     image: "/pons.png",
     estimatedFee: "~0.0001 ETH",
     network: "Robinhood Chain",
-    ready: true,
+    ready: false,
   },
   {
     id: "sherwood" as const,
@@ -81,6 +81,6 @@ export const LAUNCHPAD_META = [
     image: "/pons.png",
     estimatedFee: "~0.0001 ETH",
     network: "Robinhood Chain",
-    ready: true,
+    ready: false,
   },
 ] as const;
