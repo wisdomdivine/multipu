@@ -6,22 +6,38 @@ import { SOLANA_RPC_URL } from "@/lib/solana";
 import { Wallet } from "ethers";
 import bs58 from "bs58";
 
-// Simple XOR encryption/decryption key for demonstration
-const ENCRYPTION_KEY = process.env.JWT_SECRET || "multipu-secure-vault-key-1298471298";
+import crypto from "crypto";
 
-function encrypt(text: string): string {
-  const textBytes = Buffer.from(text, "utf8");
-  const keyBytes = Buffer.from(ENCRYPTION_KEY, "utf8");
-  const result = Buffer.alloc(textBytes.length);
-  for (let i = 0; i < textBytes.length; i++) {
-    result[i] = textBytes[i] ^ keyBytes[i % keyBytes.length];
+function getVaultKey(): Buffer {
+  const secret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("Missing SESSION_SECRET or JWT_SECRET for secure wallet vault");
   }
-  return result.toString("base64");
+  return crypto.createHash("sha256").update(secret || "multipu-dev-vault-secret-key").digest();
 }
 
-function decrypt(base64: string): string {
-  const textBytes = Buffer.from(base64, "base64");
-  const keyBytes = Buffer.from(ENCRYPTION_KEY, "utf8");
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", getVaultKey(), iv);
+  let encrypted = cipher.update(text, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
+}
+
+function decrypt(cipherPayload: string): string {
+  const parts = cipherPayload.split(":");
+  if (parts.length === 3) {
+    const [ivHex, authTagHex, encrypted] = parts;
+    const decipher = crypto.createDecipheriv("aes-256-gcm", getVaultKey(), Buffer.from(ivHex, "hex"));
+    decipher.setAuthTag(Buffer.from(authTagHex, "hex"));
+    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  }
+  // Fallback for legacy format
+  const textBytes = Buffer.from(cipherPayload, "base64");
+  const keyBytes = getVaultKey();
   const result = Buffer.alloc(textBytes.length);
   for (let i = 0; i < textBytes.length; i++) {
     result[i] = textBytes[i] ^ keyBytes[i % keyBytes.length];

@@ -207,6 +207,12 @@ export async function POST(request: Request) {
           tradeAction: action,
         },
       });
+      if (keeperRes.status === "failed") {
+        return Response.json(
+          { error: keeperRes.error || "KeeperHub execution failed" },
+          { status: 502 }
+        );
+      }
       txHash = keeperRes.txHash;
       executionLatency = keeperRes.executionLatencyMs;
     } else {
@@ -228,42 +234,49 @@ export async function POST(request: Request) {
           name: strategyRules.name || "Momentum Scalper Bot",
           description: `Autonomous ${chain.toUpperCase()} strategy on ${launchpad}`,
           prompt: `Target ${chain.toUpperCase()} meme pairs on ${launchpad}. Trade size ${amount} ${chain === "solana" ? "SOL" : "BNB"}.`,
+          chain,
+          launchpads: [launchpad],
           mode,
           status: "active",
-          chain,
-          launchpads: strategyRules.launchpads || [launchpad],
-          strategy_config: strategyRules,
           budget_allocated: amount * 5,
           budget_spent: amount,
-          total_pnl_pct: 0,
           total_trades: 1,
           successful_trades: 1,
         });
       }
 
-      // Record trade execution
-      await supabase.from("agent_trades").insert({
-        agent_id: agentId.startsWith("agent_") ? null : agentId,
-        token_symbol: tokenSymbol,
-        token_mint: tokenMint || null,
-        action,
-        launchpad,
-        chain,
-        amount_in: amount,
-        amount_out: action === "sell" ? amount + pnlSol : amount,
-        pnl_pct: pnlPct,
-        pnl_sol: pnlSol,
-        tx_signature: txHash,
-        mode,
-        execution_log: `Executed ${action.toUpperCase()} ${amount} ${chain === "solana" ? "SOL" : "BNB"} on ${launchpad} via KeeperHub Shield. Latency: ${executionLatency}ms`,
-      });
+      // Record trade execution if associated with a persistent agent
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(agentId);
+      if (isUUID) {
+        await supabase.from("agent_trades").insert({
+          agent_id: agentId,
+          token_symbol: tokenSymbol,
+          token_mint: tokenMint || null,
+          action,
+          launchpad,
+          chain,
+          amount_in: amount,
+          amount_out: action === "sell" ? amount + pnlSol : amount,
+          pnl_pct: pnlPct,
+          pnl_sol: pnlSol,
+          tx_signature: txHash,
+          mode,
+          execution_log: `Executed ${action.toUpperCase()} ${amount} ${chain === "solana" ? "SOL" : "BNB"} on ${launchpad} via KeeperHub Shield. Latency: ${executionLatency}ms`,
+        });
+      }
     } catch (dbErr) {
       console.warn("[AGENTS/EXECUTE] DB persistence note:", dbErr);
     }
 
+    if (mode === "live" && (!txHash || txHash.length < 32)) {
+      return Response.json(
+        { error: "Execution did not return a valid transaction hash" },
+        { status: 502 }
+      );
+    }
+
     const execAuditId = `kh_exec_${agentId.replace("agent_", "").substring(0, 10)}`;
-    const verifiedProofTx = "1WAA4j3NH7jySKkRurRcY14ag2VBMffjigGwR3kxdrnNY1FcWtgTpZ6ksNA3zjtSuLkXSyWEntUjwdeQdnpmMDF";
-    const confirmedTx = txHash && txHash.length > 30 ? txHash : verifiedProofTx;
+    const confirmedTx = txHash;
     const explorerUrl =
       chain === "bsc"
         ? `https://testnet.bscscan.com/tx/${confirmedTx}`

@@ -31,6 +31,7 @@ export interface KeeperHubExecutionResult {
   executionLatencyMs: number;
   auditRecordUrl: string;
   gasSpentFormatted: string;
+  error?: string;
 }
 
 const KEEPERHUB_API_URL = process.env.KEEPERHUB_API_URL || "https://api.keeperhub.com/v1";

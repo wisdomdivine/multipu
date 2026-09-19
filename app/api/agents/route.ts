@@ -67,7 +67,10 @@ export async function POST(request: Request) {
   }
 
   const auth = await getAuth(request);
-  const walletAddress = auth.isLoggedIn ? auth.walletAddress : "demo_wallet";
+  if (!auth.isLoggedIn) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const walletAddress = auth.walletAddress;
 
   try {
     const body = await request.json();

@@ -1,7 +1,7 @@
 /**
  * In-memory sliding-window rate limiter.
  *
- * Production: swap the Map for Redis (ioredis) — same interface.
+ * Production: swap the Map for Redis (ioredis) - same interface.
  * This version works for single-instance Vercel deployments.
  *
  * Usage:
@@ -80,7 +80,7 @@ export const authLimiter = createRateLimiter({
 
 export const apiLimiter = createRateLimiter({
   windowMs: 60_000, // 1 minute
-  max: 60,          // 60 API calls per minute
+  max: 120,         // 120 API calls per minute
 });
 
 export const uploadLimiter = createRateLimiter({

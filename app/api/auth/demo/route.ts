@@ -19,6 +19,13 @@ export async function POST(request: Request) {
       return Response.json({ error: originError }, { status: 403 });
     }
 
+    if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_AUTH !== "true") {
+      return Response.json(
+        { error: "Demo authentication is disabled in production environments" },
+        { status: 403 }
+      );
+    }
+
     const { walletAddress } = await request.json();
 
     if (!walletAddress) {

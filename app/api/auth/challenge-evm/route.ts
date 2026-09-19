@@ -27,6 +27,6 @@ export async function GET(request: Request) {
     chainId,
     domain: host,
     uri: `${url.protocol}//${host}`,
-    statement: "Sign in with Base wallet to authenticate with Multipu.",
+    statement: "Sign in with BSC wallet to authenticate with Multipu.",
   });
 }

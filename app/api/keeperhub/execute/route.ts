@@ -65,8 +65,19 @@ export async function POST(request: Request) {
       data,
     });
 
+    if (result.status === "failed") {
+      return Response.json(
+        {
+          success: false,
+          error: result.error || "Workflow execution failed",
+          result,
+        },
+        { status: 502 }
+      );
+    }
+
     return Response.json({
-      success: true,
+      success: result.status === "confirmed",
       result,
       engine: "KeeperHub Execution Layer",
     });
