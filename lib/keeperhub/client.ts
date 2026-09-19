@@ -35,7 +35,7 @@ export interface KeeperHubExecutionResult {
 }
 
 const KEEPERHUB_API_URL = process.env.KEEPERHUB_API_URL || "https://api.keeperhub.com/v1";
-const KEEPERHUB_API_KEY = process.env.KEEPERHUB_API_KEY || "kh_live_default_key";
+const KEEPERHUB_API_KEY = process.env.KEEPERHUB_API_KEY || "";
 
 /**
  * Off-chain deterministic execution simulation (dry-run)
@@ -45,12 +45,16 @@ export async function dryRunWorkflow(
   params: KeeperHubWorkflowParams
 ): Promise<KeeperHubDryRunResult> {
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (KEEPERHUB_API_KEY) {
+      headers["Authorization"] = `Bearer ${KEEPERHUB_API_KEY}`;
+    }
+
     const res = await fetch(`${KEEPERHUB_API_URL}/workflows/dry-run`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${KEEPERHUB_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify(params),
       cache: "no-store",
       signal: AbortSignal.timeout(3500),
@@ -89,12 +93,16 @@ export async function executeKeeperHubWorkflow(
 ): Promise<KeeperHubExecutionResult> {
   const executionId = "kh_exec_" + Math.random().toString(36).substring(2, 12);
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (KEEPERHUB_API_KEY) {
+      headers["Authorization"] = `Bearer ${KEEPERHUB_API_KEY}`;
+    }
+
     const res = await fetch(`${KEEPERHUB_API_URL}/workflows/execute`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${KEEPERHUB_API_KEY}`,
-      },
+      headers,
       body: JSON.stringify(params),
       cache: "no-store",
       signal: AbortSignal.timeout(3500),

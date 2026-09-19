@@ -1,17 +1,17 @@
 /**
- * Multipu AI Engine — Groq Cloud Client
+ * Multipu AI Engine - Groq Cloud Client
  * High-speed inference using Qwen / Llama on Groq LPU
  */
 
 export const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-export const DEFAULT_GROQ_MODEL = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
+export const DEFAULT_GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
-export const MULTIPU_AI_SYSTEM_PROMPT = `You are Multipu AI — the autonomous conversational intelligence and multi-chain trading copilot for the Multipu protocol (https://multipu.fun).
+export const MULTIPU_AI_SYSTEM_PROMPT = `You are Multipu AI - the autonomous conversational intelligence and multi-chain trading copilot for the Multipu protocol (https://multipu.fun).
 
 YOUR CAPABILITIES & DOMAIN KNOWLEDGE:
 1. Multi-Chain Launchpad Coverage:

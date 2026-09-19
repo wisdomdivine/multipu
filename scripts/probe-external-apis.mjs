@@ -172,7 +172,9 @@ async function main() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.KEEPERHUB_API_KEY || "kh_live_default_key"}`,
+          ...(process.env.KEEPERHUB_API_KEY
+            ? { Authorization: `Bearer ${process.env.KEEPERHUB_API_KEY}` }
+            : {}),
         },
         body: JSON.stringify({
           chain: "solana",

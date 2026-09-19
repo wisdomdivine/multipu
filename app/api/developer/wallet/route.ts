@@ -10,10 +10,13 @@ import crypto from "crypto";
 
 function getVaultKey(): Buffer {
   const secret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
-  if (!secret && process.env.NODE_ENV === "production") {
-    throw new Error("Missing SESSION_SECRET or JWT_SECRET for secure wallet vault");
+  if (!secret) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Missing SESSION_SECRET or JWT_SECRET for secure wallet vault");
+    }
+    return crypto.createHash("sha256").update("multipu-dev-vault-seed").digest();
   }
-  return crypto.createHash("sha256").update(secret || "multipu-dev-vault-secret-key").digest();
+  return crypto.createHash("sha256").update(secret).digest();
 }
 
 function encrypt(text: string): string {
